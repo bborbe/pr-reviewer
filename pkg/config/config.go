@@ -88,7 +88,7 @@ type fileLoader struct {
 }
 
 func (l *fileLoader) Load(ctx context.Context) (*Config, error) {
-	expandedPath := expandHome(l.configPath)
+	expandedPath := ExpandHome(l.configPath)
 
 	// #nosec G304 -- path from constructor, typically ~/.pr-reviewer.yaml
 	data, err := os.ReadFile(expandedPath)
@@ -123,7 +123,8 @@ func (l *fileLoader) Load(ctx context.Context) (*Config, error) {
 	return &cfg, nil
 }
 
-func expandHome(path string) string {
+// ExpandHome expands ~ to the user's home directory.
+func ExpandHome(path string) string {
 	if !strings.HasPrefix(path, "~") {
 		return path
 	}
