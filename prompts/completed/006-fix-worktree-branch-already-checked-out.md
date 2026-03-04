@@ -1,3 +1,13 @@
+---
+status: completed
+summary: Fixed 'branch already checked out' error by using detached HEAD worktree with origin/<branch> reference
+container: pr-reviewer-006-fix-worktree-branch-already-checked-out
+dark-factory-version: v0.14.5
+created: "2026-03-04T18:51:41Z"
+queued: "2026-03-04T18:51:41Z"
+started: "2026-03-04T18:51:41Z"
+completed: "2026-03-04T18:56:21Z"
+---
 <objective>
 Fix "branch already checked out" error when creating worktree for a PR branch that is currently checked out in the main working tree.
 </objective>

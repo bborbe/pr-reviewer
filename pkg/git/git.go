@@ -72,8 +72,10 @@ func (m *worktreeManager) CreateWorktree(
 		}
 	}
 
-	// Create worktree
-	err := m.runGit(ctx, repoPath, "worktree", "add", worktreePath, branch)
+	// Create worktree with detached HEAD at origin/branch
+	// This avoids "branch already checked out" error if the branch is checked out in main repo
+	remoteBranch := "origin/" + branch
+	err := m.runGit(ctx, repoPath, "worktree", "add", "--detach", worktreePath, remoteBranch)
 	if err != nil {
 		if strings.Contains(err.Error(), "invalid reference") {
 			return "", fmt.Errorf("branch not found: %s", branch)

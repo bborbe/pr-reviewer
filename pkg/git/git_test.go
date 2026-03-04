@@ -68,8 +68,8 @@ var _ = Describe("WorktreeManager", func() {
 		var repoPath string
 
 		BeforeEach(func() {
-			repoPath = initGitRepo()
-			createBranch(repoPath, "feature-branch")
+			repoPath = initGitRepoWithRemote()
+			createRemoteBranch(repoPath, "feature-branch")
 		})
 
 		Context("with valid branch", func() {
@@ -82,6 +82,29 @@ var _ = Describe("WorktreeManager", func() {
 				info, err := os.Stat(worktreePath)
 				Expect(err).To(BeNil())
 				Expect(info.IsDir()).To(BeTrue())
+			})
+		})
+
+		Context("with branch already checked out in main repo", func() {
+			BeforeEach(func() {
+				// Checkout the branch in the main working tree
+				runCmd(repoPath, "git", "checkout", "feature-branch")
+			})
+
+			It("creates worktree successfully using detached HEAD", func() {
+				worktreePath, err := manager.CreateWorktree(ctx, repoPath, "feature-branch", 999)
+				Expect(err).To(BeNil())
+				Expect(worktreePath).To(Equal(filepath.Join(repoPath, ".worktrees", "pr-999")))
+
+				// Verify worktree directory exists
+				info, err := os.Stat(worktreePath)
+				Expect(err).To(BeNil())
+				Expect(info.IsDir()).To(BeTrue())
+
+				// Verify worktree has the correct content (same as branch)
+				readmeContent, err := os.ReadFile(filepath.Join(worktreePath, "feature.txt"))
+				Expect(err).To(BeNil())
+				Expect(string(readmeContent)).To(Equal("Feature content\n"))
 			})
 		})
 
@@ -124,8 +147,8 @@ var _ = Describe("WorktreeManager", func() {
 		var repoPath string
 
 		BeforeEach(func() {
-			repoPath = initGitRepo()
-			createBranch(repoPath, "test-branch")
+			repoPath = initGitRepoWithRemote()
+			createRemoteBranch(repoPath, "test-branch")
 		})
 
 		Context("with non-existent worktree", func() {
@@ -165,8 +188,8 @@ var _ = Describe("WorktreeManager", func() {
 		var repoPath string
 
 		BeforeEach(func() {
-			repoPath = initGitRepo()
-			createBranch(repoPath, "pr-branch")
+			repoPath = initGitRepoWithRemote()
+			createRemoteBranch(repoPath, "pr-branch")
 		})
 
 		It("fetch → create → verify → remove → verify gone", func() {
@@ -216,8 +239,46 @@ func initGitRepo() string {
 	return tmpDir
 }
 
-func createBranch(repoPath, branchName string) {
-	runCmd(repoPath, "git", "branch", branchName)
+func initGitRepoWithRemote() string {
+	// Create a bare "remote" repository
+	remoteDir := GinkgoT().TempDir()
+	runCmd(remoteDir, "git", "init", "--bare")
+
+	// Clone it to create a local repo with proper remote tracking
+	localDir := GinkgoT().TempDir()
+	runCmd(localDir, "git", "clone", remoteDir, ".")
+	runCmd(localDir, "git", "config", "user.email", "test@example.com")
+	runCmd(localDir, "git", "config", "user.name", "Test User")
+
+	// Create initial commit
+	testFile := filepath.Join(localDir, "README.md")
+	err := os.WriteFile(testFile, []byte("# Test Repo\n"), 0600)
+	Expect(err).To(BeNil())
+
+	runCmd(localDir, "git", "add", "README.md")
+	runCmd(localDir, "git", "commit", "-m", "Initial commit")
+	runCmd(localDir, "git", "push", "origin", "master")
+
+	return localDir
+}
+
+func createRemoteBranch(repoPath, branchName string) {
+	// Create a branch with some content
+	runCmd(repoPath, "git", "checkout", "-b", branchName)
+
+	// Add a file specific to this branch
+	branchFile := filepath.Join(repoPath, "feature.txt")
+	err := os.WriteFile(branchFile, []byte("Feature content\n"), 0600)
+	Expect(err).To(BeNil())
+
+	runCmd(repoPath, "git", "add", "feature.txt")
+	runCmd(repoPath, "git", "commit", "-m", "Add feature")
+
+	// Push to remote
+	runCmd(repoPath, "git", "push", "origin", branchName)
+
+	// Go back to master
+	runCmd(repoPath, "git", "checkout", "master")
 }
 
 func runCmd(dir string, name string, args ...string) {
