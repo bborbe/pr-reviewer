@@ -19,17 +19,33 @@ After completion, `pr-reviewer` parses the Claude review output for a pass/fail 
 ## Non-goals
 
 - Closing/merging PRs based on verdict
-- Custom verdict thresholds or scoring
+- Configurable thresholds or scoring weights
 - Multi-reviewer workflows
 - Bitbucket approve/reject (separate spec if needed)
+- Changing the `/code-review` output format
 
 ## Desired Behavior
 
-1. Claude review output is analyzed for a verdict (pass / fail / unclear)
-2. On pass: tool submits a GitHub review with approve action
-3. On fail: tool submits a GitHub review with request-changes action
-4. On unclear verdict: tool falls back to plain comment (spec 001 behavior)
+The `/code-review` output uses three severity sections:
+- `### Must Fix (Critical)` — security vulnerabilities, data correctness, concurrency bugs
+- `### Should Fix (Important)` — error handling, architectural violations, missing tests
+- `### Nice to Have (Optional)` — style, minor docs, optional optimizations
+
+Verdict logic based on review content:
+
+| Review content | GitHub action |
+|---|---|
+| "Must Fix" section has items | `request-changes` |
+| Only "Should Fix" and/or "Nice to Have" | `approve` (review body contains the comments) |
+| No issues found | `approve` |
+| Cannot parse review sections | plain comment (spec 001 fallback) |
+
+1. Claude review output is parsed for the presence of "Must Fix" items
+2. If "Must Fix" section exists and contains items → `request-changes`
+3. If no "Must Fix" items (only "Should Fix" / "Nice to Have" or clean) → `approve`
+4. If review output doesn't match expected format → fall back to plain comment (spec 001)
 5. User can override verdict via CLI flag (`--comment-only` forces plain comment)
+6. Detected verdict and reason are logged to stderr
 
 ## Constraints
 
@@ -53,23 +69,19 @@ After completion, `pr-reviewer` parses the Claude review output for a pass/fail 
 ## Security / Abuse Cases
 
 - Auto-approving is security-relevant — false approvals could bypass branch protection
-- Verdict parsing must be conservative: only approve on explicit, unambiguous pass signal
-- Never approve if Claude output contains any error/warning indicators alongside a pass signal
-- Log the detected verdict to stdout so the user can verify
-
-## Open Questions
-
-- How does `/code-review` signal pass/fail? Structured output? Keywords? Exit code?
-- Should verdict keywords be configurable or hardcoded?
+- Only approve when "Must Fix" section is empty or absent — conservative by default
+- If parsing fails or output is unexpected, always fall back to plain comment (never approve unclear reviews)
+- Log the detected verdict to stderr so the user can verify
 
 ## Acceptance Criteria
 
-- [ ] Clean review → PR approved via GitHub review API
-- [ ] Review with issues → PR gets request-changes via GitHub review API
-- [ ] Ambiguous verdict → falls back to plain comment (spec 001 behavior)
+- [ ] Review with "Must Fix" items → `request-changes` via GitHub review API
+- [ ] Review with only "Should Fix" / "Nice to Have" → `approve` via GitHub review API
+- [ ] Clean review (no issues) → `approve` via GitHub review API
+- [ ] Unparseable review output → falls back to plain comment (spec 001 behavior)
 - [ ] `--comment-only` flag skips verdict and posts as plain comment
-- [ ] Detected verdict is logged to stdout
-- [ ] Existing spec 001 behavior unchanged when no verdict flag is used
+- [ ] Detected verdict and reason logged to stderr
+- [ ] `make precommit` passes
 
 ## Verification
 
