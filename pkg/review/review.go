@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -38,6 +39,7 @@ func (r *claudeReviewer) Review(ctx context.Context, worktreePath string) (strin
 	// #nosec G204 -- claudePath verified by LookPath, args are hardcoded flags
 	cmd := exec.CommandContext(ctx, claudePath, "--print", "/code-review")
 	cmd.Dir = worktreePath
+	cmd.Env = filterEnv("CLAUDECODE")
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -48,4 +50,16 @@ func (r *claudeReviewer) Review(ctx context.Context, worktreePath string) (strin
 	}
 
 	return stdout.String(), nil
+}
+
+// filterEnv returns os.Environ() with the named variable removed.
+func filterEnv(name string) []string {
+	prefix := name + "="
+	var env []string
+	for _, e := range os.Environ() {
+		if !strings.HasPrefix(e, prefix) {
+			env = append(env, e)
+		}
+	}
+	return env
 }
