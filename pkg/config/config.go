@@ -25,6 +25,9 @@ type GitHubConfig struct {
 // DefaultModel is the default Claude model to use when not specified in config.
 const DefaultModel = "sonnet"
 
+// DefaultGitHubToken is the default env var reference for the GitHub token.
+const DefaultGitHubToken = "${PR_REVIEWER_GITHUB_TOKEN}"
+
 // Config holds the pr-reviewer configuration.
 type Config struct {
 	GitHub GitHubConfig `yaml:"github"`
