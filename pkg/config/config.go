@@ -62,8 +62,13 @@ func resolveEnvVar(value string) string {
 }
 
 // ResolvedGitHubToken returns the GitHub token with environment variable resolution.
+// If no token is configured, falls back to DefaultGitHubToken.
 func (c *Config) ResolvedGitHubToken() string {
-	return resolveEnvVar(c.GitHub.Token)
+	token := c.GitHub.Token
+	if token == "" {
+		token = DefaultGitHubToken
+	}
+	return resolveEnvVar(token)
 }
 
 // ResolvedModel returns the configured model if non-empty, otherwise returns DefaultModel.
