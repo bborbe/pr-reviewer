@@ -1,5 +1,12 @@
 ---
-spec: 003-approve-request-changes
+status: completed
+summary: Implemented verdict parser with conservative parsing logic and 100% test coverage
+container: pr-reviewer-014-verdict-parser
+dark-factory-version: v0.15.1
+created: "2026-03-04T22:53:47Z"
+queued: "2026-03-04T22:53:47Z"
+started: "2026-03-04T22:53:47Z"
+completed: "2026-03-04T22:57:58Z"
 ---
 <objective>
 Add a verdict parser that analyzes Claude review output and determines the appropriate GitHub review action (approve, request-changes, or plain comment fallback).
