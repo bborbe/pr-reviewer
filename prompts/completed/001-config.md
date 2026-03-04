@@ -1,3 +1,13 @@
+---
+status: completed
+summary: Implemented config loading with Loader interface, fileLoader, and comprehensive tests
+container: pr-reviewer-001-config
+dark-factory-version: v0.14.5
+created: "2026-03-04T13:56:17Z"
+queued: "2026-03-04T13:56:17Z"
+started: "2026-03-04T13:56:17Z"
+completed: "2026-03-04T14:02:45Z"
+---
 <objective>
 Implement config loading for pr-reviewer. The tool needs a YAML config file (~/.pr-reviewer.yaml) that maps repo URLs to local checkout paths. This is the foundation — all other prompts depend on config lookup.
 </objective>
