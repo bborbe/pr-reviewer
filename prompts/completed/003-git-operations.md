@@ -1,4 +1,5 @@
 ---
+spec: 001-mvp-review-single-pr
 status: completed
 summary: Implemented git worktree management with Fetch, CreateWorktree, RemoveWorktree methods and comprehensive tests
 container: pr-reviewer-003-git-operations

@@ -1,4 +1,5 @@
 ---
+spec: 002-separate-reviewer-identity
 status: completed
 summary: Added separate GitHub reviewer identity via GH_TOKEN configuration
 container: pr-reviewer-008-separate-reviewer-identity

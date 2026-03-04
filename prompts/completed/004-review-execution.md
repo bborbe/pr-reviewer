@@ -1,4 +1,5 @@
 ---
+spec: 001-mvp-review-single-pr
 status: completed
 summary: Implemented Claude Code review execution with Reviewer interface and claudeReviewer implementation
 container: pr-reviewer-004-review-execution

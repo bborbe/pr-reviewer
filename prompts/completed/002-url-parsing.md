@@ -1,4 +1,5 @@
 ---
+spec: 001-mvp-review-single-pr
 status: completed
 summary: Implemented GitHub PR URL parsing with PRInfo struct and ParsePRURL function
 container: pr-reviewer-002-url-parsing

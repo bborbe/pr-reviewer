@@ -1,4 +1,5 @@
 ---
+spec: 001-mvp-review-single-pr
 status: completed
 summary: Made Claude review command configurable per repo with default /code-review
 container: pr-reviewer-007-configurable-review-command

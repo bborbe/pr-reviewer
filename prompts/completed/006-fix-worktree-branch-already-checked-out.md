@@ -1,4 +1,5 @@
 ---
+spec: 001-mvp-review-single-pr
 status: completed
 summary: Fixed 'branch already checked out' error by using detached HEAD worktree with origin/<branch> reference
 container: pr-reviewer-006-fix-worktree-branch-already-checked-out

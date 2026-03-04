@@ -1,4 +1,5 @@
 ---
+spec: 001-mvp-review-single-pr
 status: completed
 summary: Added progress logging to stderr with -v verbose flag
 container: pr-reviewer-009-verbose-progress-logging

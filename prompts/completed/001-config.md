@@ -1,4 +1,5 @@
 ---
+spec: 001-mvp-review-single-pr
 status: completed
 summary: Implemented config loading with Loader interface, fileLoader, and comprehensive tests
 container: pr-reviewer-001-config

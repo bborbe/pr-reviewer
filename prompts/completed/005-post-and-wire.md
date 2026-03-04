@@ -1,4 +1,5 @@
 ---
+spec: 001-mvp-review-single-pr
 status: completed
 summary: Implemented GitHub client and wired everything together in main.go for end-to-end PR review workflow
 container: pr-reviewer-005-post-and-wire

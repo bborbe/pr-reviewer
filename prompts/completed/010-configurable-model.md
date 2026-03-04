@@ -1,4 +1,5 @@
 ---
+spec: 001-mvp-review-single-pr
 status: completed
 summary: Added configurable Claude model with default sonnet and --model flag always passed to claude CLI
 container: pr-reviewer-010-configurable-model
