@@ -8,7 +8,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -19,6 +18,7 @@ import (
 	"github.com/bborbe/pr-reviewer/pkg/git"
 	"github.com/bborbe/pr-reviewer/pkg/github"
 	"github.com/bborbe/pr-reviewer/pkg/review"
+	"github.com/bborbe/pr-reviewer/pkg/version"
 )
 
 func main() {
@@ -50,6 +50,9 @@ func run(ctx context.Context, verbose bool) error {
 	}
 	rawURL := flag.Arg(0)
 
+	// Log version
+	logVerbose(verbose, "pr-reviewer %s", version.Version)
+
 	// Parse PR URL
 	logVerbose(verbose, "parsing URL: %s", rawURL)
 	prInfo, err := github.ParsePRURL(rawURL)
@@ -76,13 +79,10 @@ func run(ctx context.Context, verbose bool) error {
 	repoPath := config.ExpandHome(repoInfo.Path)
 	logVerbose(verbose, "repo: %s", repoPath)
 
-	// Check if token is configured but env var is empty
-	if cfg.GitHub.Token != "" && cfg.ResolvedGitHubToken() == "" {
-		log.Println("warning: github.token configured but env var is empty, using default gh auth")
-	}
-
-	// Initialize components
-	ghClient := github.NewGHClient(cfg.ResolvedGitHubToken())
+	// Resolve token and initialize components
+	resolvedToken := cfg.ResolvedGitHubToken()
+	logTokenStatus(verbose, cfg.GitHub.Token, resolvedToken)
+	ghClient := github.NewGHClient(resolvedToken)
 	worktreeManager := git.NewWorktreeManager()
 	reviewer := review.NewClaudeReviewer()
 
@@ -170,6 +170,19 @@ func runReviewAndPost(
 
 	logAlways("done")
 	return nil
+}
+
+// logTokenStatus logs the GitHub token source and whether it resolved to a value.
+func logTokenStatus(verbose bool, configToken, resolvedToken string) {
+	source := configToken
+	if source == "" {
+		source = config.DefaultGitHubToken
+	}
+	if resolvedToken == "" {
+		logVerbose(verbose, "github token: %s (not set, using default gh auth)", source)
+	} else {
+		logVerbose(verbose, "github token: %s (set, %d chars)", source, len(resolvedToken))
+	}
 }
 
 // logAlways logs a message to stderr in both normal and verbose mode.

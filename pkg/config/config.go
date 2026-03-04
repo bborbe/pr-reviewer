@@ -25,9 +25,9 @@ type GitHubConfig struct {
 // DefaultModel is the default Claude model to use when not specified in config.
 const DefaultModel = "sonnet"
 
-// DefaultGitHubToken is the default env var reference for the GitHub token.
-// #nosec G101 -- not a credential, just an env var reference template
-const DefaultGitHubToken = "${PR_REVIEWER_GITHUB_TOKEN}"
+// DefaultGitHubToken is the default env var name for the GitHub token.
+// #nosec G101 -- not a credential, just an env var name
+const DefaultGitHubToken = "PR_REVIEWER_GITHUB_TOKEN"
 
 // Config holds the pr-reviewer configuration.
 type Config struct {
@@ -63,13 +63,12 @@ func resolveEnvVar(value string) string {
 }
 
 // ResolvedGitHubToken returns the GitHub token with environment variable resolution.
-// If no token is configured, falls back to DefaultGitHubToken.
+// If no token is configured, falls back to DefaultGitHubToken env var.
 func (c *Config) ResolvedGitHubToken() string {
-	token := c.GitHub.Token
-	if token == "" {
-		token = DefaultGitHubToken
+	if c.GitHub.Token != "" {
+		return resolveEnvVar(c.GitHub.Token)
 	}
-	return resolveEnvVar(token)
+	return os.Getenv(DefaultGitHubToken)
 }
 
 // ResolvedModel returns the configured model if non-empty, otherwise returns DefaultModel.
