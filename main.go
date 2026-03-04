@@ -18,14 +18,16 @@ import (
 	"github.com/bborbe/pr-reviewer/pkg/git"
 	"github.com/bborbe/pr-reviewer/pkg/github"
 	"github.com/bborbe/pr-reviewer/pkg/review"
+	"github.com/bborbe/pr-reviewer/pkg/verdict"
 	"github.com/bborbe/pr-reviewer/pkg/version"
 )
 
 func main() {
 	// Parse flags
 	verbose := flag.Bool("v", false, "enable verbose output")
+	commentOnly := flag.Bool("comment-only", false, "skip verdict, post as plain comment")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "usage: pr-reviewer [-v] <pr-url>\n")
+		fmt.Fprintf(os.Stderr, "usage: pr-reviewer [-v] [--comment-only] <pr-url>\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -37,16 +39,16 @@ func main() {
 	)
 	defer cancel()
 
-	if err := run(ctx, *verbose); err != nil {
+	if err := run(ctx, *verbose, *commentOnly); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func run(ctx context.Context, verbose bool) error {
+func run(ctx context.Context, verbose bool, commentOnly bool) error {
 	// Parse args
 	if flag.NArg() < 1 {
-		return fmt.Errorf("usage: pr-reviewer [-v] <pr-url>")
+		return fmt.Errorf("usage: pr-reviewer [-v] [--comment-only] <pr-url>")
 	}
 	rawURL := flag.Arg(0)
 
@@ -125,6 +127,7 @@ func run(ctx context.Context, verbose bool) error {
 	return runReviewAndPost(
 		ctx,
 		verbose,
+		commentOnly,
 		reviewer,
 		ghClient,
 		worktreePath,
@@ -138,6 +141,7 @@ func run(ctx context.Context, verbose bool) error {
 func runReviewAndPost(
 	ctx context.Context,
 	verbose bool,
+	commentOnly bool,
 	reviewer review.Reviewer,
 	ghClient github.Client,
 	worktreePath string,
@@ -156,7 +160,65 @@ func runReviewAndPost(
 	// Always print review to stdout
 	fmt.Println(reviewText)
 
-	// Post comment
+	// Parse verdict
+	result := verdict.Parse(reviewText)
+	logAlways("verdict: %s (%s)", result.Verdict, result.Reason)
+
+	// Submit review or post comment based on verdict and flag
+	return submitReview(
+		ctx,
+		commentOnly,
+		result,
+		ghClient,
+		prInfo,
+		reviewText,
+	)
+}
+
+// submitReview submits the review using the appropriate method based on verdict and flags.
+func submitReview(
+	ctx context.Context,
+	commentOnly bool,
+	result verdict.Result,
+	ghClient github.Client,
+	prInfo *github.PRInfo,
+	reviewText string,
+) error {
+	// --comment-only flag overrides verdict
+	if commentOnly {
+		logAlways("posting comment...")
+		if err := ghClient.PostComment(
+			ctx,
+			prInfo.Owner,
+			prInfo.Repo,
+			prInfo.Number,
+			reviewText,
+		); err != nil {
+			return errors.Wrap(ctx, err, "post comment failed")
+		}
+		logAlways("done")
+		return nil
+	}
+
+	// Submit structured review for approve/request-changes
+	if result.Verdict == verdict.VerdictApprove ||
+		result.Verdict == verdict.VerdictRequestChanges {
+		logAlways("submitting review: %s...", result.Verdict)
+		if err := ghClient.SubmitReview(
+			ctx,
+			prInfo.Owner,
+			prInfo.Repo,
+			prInfo.Number,
+			reviewText,
+			result.Verdict,
+		); err != nil {
+			return errors.Wrap(ctx, err, "submit review failed")
+		}
+		logAlways("done")
+		return nil
+	}
+
+	// Fallback to plain comment for VerdictComment
 	logAlways("posting comment...")
 	if err := ghClient.PostComment(
 		ctx,
@@ -167,7 +229,6 @@ func runReviewAndPost(
 	); err != nil {
 		return errors.Wrap(ctx, err, "post comment failed")
 	}
-
 	logAlways("done")
 	return nil
 }

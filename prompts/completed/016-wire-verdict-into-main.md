@@ -1,5 +1,12 @@
 ---
-spec: 003-approve-request-changes
+status: completed
+summary: Wired verdict parser and SubmitReview into main.go with --comment-only flag
+container: pr-reviewer-016-wire-verdict-into-main
+dark-factory-version: v0.16.0
+created: "2026-03-04T23:30:30Z"
+queued: "2026-03-04T23:30:30Z"
+started: "2026-03-04T23:30:30Z"
+completed: "2026-03-04T23:35:00Z"
 ---
 <objective>
 Wire the verdict parser and SubmitReview into main.go. Add --comment-only flag. Replace plain PostComment with verdict-based review submission.
