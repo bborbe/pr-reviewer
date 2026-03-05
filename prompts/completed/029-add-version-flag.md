@@ -1,5 +1,11 @@
 ---
-status: queued
+status: executed
+container: pr-reviewer-029-add-version-flag
+dark-factory-version: v0.17.9
+created: "2026-03-05T21:53:46Z"
+queued: "2026-03-05T21:53:46Z"
+started: "2026-03-05T21:53:46Z"
+completed: "2026-03-05T22:00:46Z"
 ---
 <objective>
 Add a --version flag that prints the build-time version and exits.

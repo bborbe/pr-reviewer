@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.7.0
+
+- Add --version flag to print build-time version and exit
+
 ## v0.6.0
 
 - Use YOLO_OUTPUT=print for raw text output instead of stream-json extraction

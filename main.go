@@ -28,11 +28,17 @@ func main() {
 	// Parse flags
 	verbose := flag.Bool("v", false, "enable verbose output")
 	commentOnly := flag.Bool("comment-only", false, "skip verdict, post as plain comment")
+	versionFlag := flag.Bool("version", false, "print version and exit")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "usage: pr-reviewer [-v] [--comment-only] <pr-url>\n")
+		fmt.Fprintf(os.Stderr, "usage: pr-reviewer [--version] [-v] [--comment-only] <pr-url>\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Printf("pr-reviewer %s\n", version.Version)
+		os.Exit(0)
+	}
 
 	ctx, cancel := signal.NotifyContext(
 		context.Background(),
