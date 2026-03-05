@@ -14,6 +14,7 @@ import (
 
 	"github.com/bborbe/errors"
 
+	"github.com/bborbe/pr-reviewer/pkg/bitbucket"
 	"github.com/bborbe/pr-reviewer/pkg/config"
 	"github.com/bborbe/pr-reviewer/pkg/git"
 	"github.com/bborbe/pr-reviewer/pkg/github"
@@ -82,12 +83,37 @@ func run(ctx context.Context, verbose bool, commentOnly bool) error {
 	repoPath := config.ExpandHome(repoInfo.Path)
 	logVerbose(verbose, "repo: %s", repoPath)
 
-	// Resolve token and initialize components
+	// Route based on platform
+	switch prInfo.Platform {
+	case prurl.PlatformGitHub:
+		return runGitHub(ctx, verbose, commentOnly, cfg, prInfo, repoPath, repoInfo)
+	case prurl.PlatformBitbucket:
+		return runBitbucket(ctx, verbose, commentOnly, cfg, prInfo, repoPath, repoInfo)
+	default:
+		return fmt.Errorf("unsupported platform: %s", prInfo.Platform)
+	}
+}
+
+// runGitHub handles the GitHub PR review workflow.
+func runGitHub(
+	ctx context.Context,
+	verbose bool,
+	commentOnly bool,
+	cfg *config.Config,
+	prInfo *prurl.PRInfo,
+	repoPath string,
+	repoInfo *config.RepoInfo,
+) error {
+	// Resolve token and create client
 	resolvedToken := cfg.ResolvedGitHubToken()
-	logTokenStatus(verbose, cfg.GitHub.Token, resolvedToken)
+	logTokenStatus(
+		verbose,
+		"github token",
+		cfg.GitHub.Token,
+		resolvedToken,
+		config.DefaultGitHubToken,
+	)
 	ghClient := github.NewGHClient(resolvedToken)
-	worktreeManager := git.NewWorktreeManager()
-	reviewer := review.NewClaudeReviewer()
 
 	// Get PR branch name
 	branch, err := ghClient.GetPRBranch(ctx, prInfo.Owner, prInfo.Repo, prInfo.Number)
@@ -96,20 +122,130 @@ func run(ctx context.Context, verbose bool, commentOnly bool) error {
 	}
 	logVerbose(verbose, "fetching branch: %s", branch)
 
+	// Create worktree and run review
+	worktreePath, cleanup, err := createWorktreeAndFetch(
+		ctx,
+		verbose,
+		repoPath,
+		branch,
+		prInfo.Number,
+	)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	// Run review
+	reviewer := review.NewClaudeReviewer()
+	reviewText, result, err := runReview(
+		ctx,
+		verbose,
+		reviewer,
+		worktreePath,
+		repoInfo.ReviewCommand,
+		cfg.ResolvedModel(),
+		prInfo,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Submit review or post comment
+	return submitGitHubReview(ctx, commentOnly, result, ghClient, prInfo, reviewText)
+}
+
+// runBitbucket handles the Bitbucket Server PR review workflow.
+func runBitbucket(
+	ctx context.Context,
+	verbose bool,
+	commentOnly bool,
+	cfg *config.Config,
+	prInfo *prurl.PRInfo,
+	repoPath string,
+	repoInfo *config.RepoInfo,
+) error {
+	// Resolve token and create client
+	resolvedToken := cfg.ResolvedBitbucketToken()
+	logTokenStatus(
+		verbose,
+		"bitbucket token",
+		cfg.Bitbucket.Token,
+		resolvedToken,
+		config.DefaultBitbucketToken,
+	)
+	if resolvedToken == "" {
+		return fmt.Errorf("BITBUCKET_TOKEN not set")
+	}
+	bbClient := bitbucket.NewClient(resolvedToken)
+
+	// Get PR branch name
+	branch, err := bbClient.GetPRBranch(
+		ctx,
+		prInfo.Host,
+		prInfo.Project,
+		prInfo.Repo,
+		prInfo.Number,
+	)
+	if err != nil {
+		return errors.Wrap(ctx, err, "get PR branch failed")
+	}
+	logVerbose(verbose, "fetching branch: %s", branch)
+
+	// Create worktree and run review
+	worktreePath, cleanup, err := createWorktreeAndFetch(
+		ctx,
+		verbose,
+		repoPath,
+		branch,
+		prInfo.Number,
+	)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	// Run review
+	reviewer := review.NewClaudeReviewer()
+	reviewText, result, err := runReview(
+		ctx,
+		verbose,
+		reviewer,
+		worktreePath,
+		repoInfo.ReviewCommand,
+		cfg.ResolvedModel(),
+		prInfo,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Post comment (Bitbucket SubmitReview is spec 005)
+	return submitBitbucketReview(ctx, commentOnly, result, bbClient, prInfo, reviewText)
+}
+
+// createWorktreeAndFetch creates a worktree and fetches latest changes.
+// Returns worktree path and cleanup function.
+func createWorktreeAndFetch(
+	ctx context.Context,
+	verbose bool,
+	repoPath, branch string,
+	prNumber int,
+) (string, func(), error) {
+	worktreeManager := git.NewWorktreeManager()
+
 	// Fetch latest changes
 	if err := worktreeManager.Fetch(ctx, repoPath); err != nil {
-		return errors.Wrap(ctx, err, "fetch failed")
+		return "", nil, errors.Wrap(ctx, err, "fetch failed")
 	}
 
 	// Create worktree
-	worktreePath, err := worktreeManager.CreateWorktree(ctx, repoPath, branch, prInfo.Number)
+	worktreePath, err := worktreeManager.CreateWorktree(ctx, repoPath, branch, prNumber)
 	if err != nil {
-		return errors.Wrap(ctx, err, "create worktree failed")
+		return "", nil, errors.Wrap(ctx, err, "create worktree failed")
 	}
 	logVerbose(verbose, "created worktree: %s", worktreePath)
 
-	// Ensure cleanup on exit
-	defer func() {
+	cleanup := func() {
 		cleanupCtx := context.Background()
 		if cleanupErr := worktreeManager.RemoveWorktree(
 			cleanupCtx,
@@ -122,40 +258,25 @@ func run(ctx context.Context, verbose bool, commentOnly bool) error {
 				cleanupErr,
 			)
 		}
-	}()
+	}
 
-	// Run review and post comment
-	return runReviewAndPost(
-		ctx,
-		verbose,
-		commentOnly,
-		reviewer,
-		ghClient,
-		worktreePath,
-		repoInfo.ReviewCommand,
-		cfg.ResolvedModel(),
-		prInfo,
-	)
+	return worktreePath, cleanup, nil
 }
 
-// runReviewAndPost executes the review and posts the comment.
-func runReviewAndPost(
+// runReview executes the Claude review and returns the review text and verdict.
+func runReview(
 	ctx context.Context,
 	verbose bool,
-	commentOnly bool,
 	reviewer review.Reviewer,
-	ghClient github.Client,
-	worktreePath string,
-	reviewCommand string,
-	model string,
+	worktreePath, reviewCommand, model string,
 	prInfo *prurl.PRInfo,
-) error {
+) (string, verdict.Result, error) {
 	// Run review
 	logAlways("reviewing PR #%d (%s/%s)...", prInfo.Number, prInfo.Owner, prInfo.Repo)
 	logVerbose(verbose, "running review... (this may take a few minutes)")
 	reviewText, err := reviewer.Review(ctx, worktreePath, reviewCommand, model)
 	if err != nil {
-		return errors.Wrap(ctx, err, "review failed")
+		return "", verdict.Result{}, errors.Wrap(ctx, err, "review failed")
 	}
 
 	// Always print review to stdout
@@ -165,19 +286,11 @@ func runReviewAndPost(
 	result := verdict.Parse(reviewText)
 	logAlways("verdict: %s (%s)", result.Verdict, result.Reason)
 
-	// Submit review or post comment based on verdict and flag
-	return submitReview(
-		ctx,
-		commentOnly,
-		result,
-		ghClient,
-		prInfo,
-		reviewText,
-	)
+	return reviewText, result, nil
 }
 
-// submitReview submits the review using the appropriate method based on verdict and flags.
-func submitReview(
+// submitGitHubReview submits the review to GitHub using the appropriate method.
+func submitGitHubReview(
 	ctx context.Context,
 	commentOnly bool,
 	result verdict.Result,
@@ -234,16 +347,46 @@ func submitReview(
 	return nil
 }
 
-// logTokenStatus logs the GitHub token source and whether it resolved to a value.
-func logTokenStatus(verbose bool, configToken, resolvedToken string) {
+// submitBitbucketReview submits the review to Bitbucket as a comment.
+// Bitbucket SubmitReview (approve/request-changes) is spec 005.
+func submitBitbucketReview(
+	ctx context.Context,
+	commentOnly bool,
+	result verdict.Result,
+	bbClient bitbucket.Client,
+	prInfo *prurl.PRInfo,
+	reviewText string,
+) error {
+	// For now, all Bitbucket reviews are posted as comments
+	// Spec 005 will add structured review verdicts
+	_ = commentOnly // Currently all verdicts post as comments
+	_ = result      // Verdict logged but not used for Bitbucket yet
+
+	logAlways("posting comment...")
+	if err := bbClient.PostComment(
+		ctx,
+		prInfo.Host,
+		prInfo.Project,
+		prInfo.Repo,
+		prInfo.Number,
+		reviewText,
+	); err != nil {
+		return errors.Wrap(ctx, err, "post comment failed")
+	}
+	logAlways("done")
+	return nil
+}
+
+// logTokenStatus logs the token source and whether it resolved to a value.
+func logTokenStatus(verbose bool, label, configToken, resolvedToken, defaultToken string) {
 	source := configToken
 	if source == "" {
-		source = config.DefaultGitHubToken
+		source = defaultToken
 	}
 	if resolvedToken == "" {
-		logVerbose(verbose, "github token: %s (not set, using default gh auth)", source)
+		logVerbose(verbose, "%s: %s (not set, using default auth)", label, source)
 	} else {
-		logVerbose(verbose, "github token: %s (set, %d chars)", source, len(resolvedToken))
+		logVerbose(verbose, "%s: %s (set, %d chars)", label, source, len(resolvedToken))
 	}
 }
 

@@ -1,6 +1,12 @@
 ---
-spec: 004-bitbucket-server-support
-status: queued
+status: completed
+summary: Wired Bitbucket Server support into main.go with platform routing and shared review workflow
+container: pr-reviewer-020-wire-bitbucket-into-main
+dark-factory-version: v0.17.0
+created: "2026-03-05T13:13:51Z"
+queued: "2026-03-05T13:13:51Z"
+started: "2026-03-05T13:13:51Z"
+completed: "2026-03-05T13:19:06Z"
 ---
 <objective>
 Wire Bitbucket Server support into main.go. Route GitHub and Bitbucket URLs to their respective clients while sharing the worktree/review/verdict workflow.
