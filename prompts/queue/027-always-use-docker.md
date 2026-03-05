@@ -1,5 +1,5 @@
 ---
-status: created
+status: queued
 ---
 <objective>
 Remove the useDocker toggle and always run reviews inside the claude-yolo Docker container. Remove the host-based claudeReviewer entirely.
