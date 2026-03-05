@@ -2,7 +2,7 @@
 tags:
   - dark-factory
   - spec
-status: draft
+status: approved
 ---
 Tags: [[Dark Factory - Spec Writing Guide]]
 
@@ -19,8 +19,8 @@ After completion, `pr-reviewer` also accepts Bitbucket Server PR URLs, resolves 
 ## Non-goals
 
 - Bitbucket Cloud (different API)
-- Approve/reject via Bitbucket API (separate spec if needed)
-- Bitbucket-specific review features (inline comments, tasks)
+- Approve/reject via Bitbucket API (see spec 005)
+- Bitbucket inline comments and tasks (see spec 006)
 
 ## Desired Behavior
 
@@ -86,10 +86,11 @@ Repo URL for config lookup: `https://{host}/projects/{project}/repos/{repo}`
 - Token must not appear in log output or error messages
 - Validate Bitbucket host against config — don't send token to arbitrary hosts
 
-## Open Questions
+## Resolved Questions
 
-- Token per host or single global token? (Matters if multiple Bitbucket instances)
-- Bitbucket Server version minimum for REST API compatibility?
+- **Token per host or single global?** Single global token — only one Bitbucket instance (`bitbucket.seibert.tools`).
+- **Token mechanism:** Same as GitHub — env var `BITBUCKET_TOKEN`, stored in macOS Keychain, loaded in `.zshrc`. Config defaults to `BITBUCKET_TOKEN` if `bitbucket.token` not set (same pattern as `PR_REVIEWER_GITHUB_TOKEN`).
+- **Bitbucket Server version:** No minimum enforced — use standard REST API v1.0 endpoints.
 
 ## Acceptance Criteria
 
