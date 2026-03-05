@@ -1,3 +1,13 @@
+---
+status: completed
+summary: Wired Bitbucket review verdict (approve/needs-work) into main workflow
+container: pr-reviewer-022-wire-bitbucket-verdict
+dark-factory-version: v0.17.1
+created: "2026-03-05T14:42:33Z"
+queued: "2026-03-05T14:42:33Z"
+started: "2026-03-05T14:42:33Z"
+completed: "2026-03-05T14:45:50Z"
+---
 <objective>
 Wire the Bitbucket review verdict (approve/needs-work) into the main workflow. After posting the review comment, submit the appropriate Bitbucket verdict based on the parsed review output — same logic as the existing GitHub path (spec 003).
 </objective>
