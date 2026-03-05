@@ -352,8 +352,7 @@ func submitGitHubReview(
 	return nil
 }
 
-// submitBitbucketReview submits the review to Bitbucket as a comment.
-// Bitbucket SubmitReview (approve/request-changes) is spec 005.
+// submitBitbucketReview submits the review to Bitbucket with comment and verdict.
 func submitBitbucketReview(
 	ctx context.Context,
 	commentOnly bool,
@@ -362,11 +361,7 @@ func submitBitbucketReview(
 	prInfo *prurl.PRInfo,
 	reviewText string,
 ) error {
-	// For now, all Bitbucket reviews are posted as comments
-	// Spec 005 will add structured review verdicts
-	_ = commentOnly // Currently all verdicts post as comments
-	_ = result      // Verdict logged but not used for Bitbucket yet
-
+	// Always post comment first
 	logAlways("posting comment...")
 	if err := bbClient.PostComment(
 		ctx,
@@ -378,6 +373,51 @@ func submitBitbucketReview(
 	); err != nil {
 		return errors.Wrap(ctx, err, "post comment failed")
 	}
+
+	// --comment-only flag skips verdict submission
+	if commentOnly {
+		logAlways("done")
+		return nil
+	}
+
+	// Submit verdict for approve/request-changes
+	if result.Verdict == verdict.VerdictApprove {
+		logAlways("approving PR...")
+		if err := bbClient.Approve(
+			ctx,
+			prInfo.Host,
+			prInfo.Project,
+			prInfo.Repo,
+			prInfo.Number,
+		); err != nil {
+			return errors.Wrap(ctx, err, "approve failed")
+		}
+		logAlways("done")
+		return nil
+	}
+
+	if result.Verdict == verdict.VerdictRequestChanges {
+		logAlways("marking PR as needs-work...")
+		// Get user slug for needs-work API
+		profile, err := bbClient.GetProfile(ctx, prInfo.Host)
+		if err != nil {
+			return errors.Wrap(ctx, err, "get profile failed")
+		}
+		if err := bbClient.NeedsWork(
+			ctx,
+			prInfo.Host,
+			prInfo.Project,
+			prInfo.Repo,
+			prInfo.Number,
+			profile.Slug,
+		); err != nil {
+			return errors.Wrap(ctx, err, "needs-work failed")
+		}
+		logAlways("done")
+		return nil
+	}
+
+	// VerdictComment - no verdict action needed
 	logAlways("done")
 	return nil
 }
