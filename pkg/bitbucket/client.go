@@ -14,11 +14,17 @@ import (
 	"strings"
 )
 
+// PRBranches holds the source and target branch names of a pull request.
+type PRBranches struct {
+	Source string
+	Target string
+}
+
 // Client interacts with Bitbucket Server REST API v1.0.
 //
 //counterfeiter:generate -o ../../mocks/bitbucket-client.go --fake-name BitbucketClient . Client
 type Client interface {
-	GetPRBranch(ctx context.Context, host, project, repo string, number int) (string, error)
+	GetPRBranches(ctx context.Context, host, project, repo string, number int) (PRBranches, error)
 	PostComment(ctx context.Context, host, project, repo string, number int, body string) error
 	GetProfile(ctx context.Context, host string) (Profile, error)
 	Approve(ctx context.Context, host, project, repo string, number int) error
@@ -43,6 +49,9 @@ type prResponse struct {
 	FromRef struct {
 		DisplayID string `json:"displayId"`
 	} `json:"fromRef"`
+	ToRef struct {
+		DisplayID string `json:"displayId"`
+	} `json:"toRef"`
 }
 
 type commentRequest struct {
@@ -64,48 +73,53 @@ type participantUser struct {
 	Slug string `json:"slug"`
 }
 
-// GetPRBranch fetches the source branch name for a pull request.
-func (c *httpClient) GetPRBranch(
+// GetPRBranches fetches the source and target branch names for a pull request.
+func (c *httpClient) GetPRBranches(
 	ctx context.Context,
 	host, project, repo string,
 	number int,
-) (string, error) {
+) (PRBranches, error) {
 	url := c.buildURL(host, fmt.Sprintf("/rest/api/1.0/projects/%s/repos/%s/pull-requests/%d",
 		project, repo, number))
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+		return PRBranches{}, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Authorization", "Bearer "+c.token)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("request failed for %s: %w", host, err)
+		return PRBranches{}, fmt.Errorf("request failed for %s: %w", host, err)
 	}
 	defer resp.Body.Close()
 
 	if err := checkResponseStatus(resp, host, project, repo, number); err != nil {
-		return "", err
+		return PRBranches{}, err
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read response body: %w", err)
+		return PRBranches{}, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	var prResp prResponse
 	if err := json.Unmarshal(body, &prResp); err != nil {
-		return "", fmt.Errorf("failed to parse response: %w", err)
+		return PRBranches{}, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	branch := prResp.FromRef.DisplayID
-	if branch == "" {
-		return "", fmt.Errorf("PR response missing source branch")
+	if prResp.FromRef.DisplayID == "" {
+		return PRBranches{}, fmt.Errorf("PR response missing source branch")
+	}
+	if prResp.ToRef.DisplayID == "" {
+		return PRBranches{}, fmt.Errorf("PR response missing target branch")
 	}
 
-	return branch, nil
+	return PRBranches{
+		Source: prResp.FromRef.DisplayID,
+		Target: prResp.ToRef.DisplayID,
+	}, nil
 }
 
 // PostComment posts a comment on a pull request.

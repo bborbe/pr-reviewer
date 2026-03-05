@@ -39,17 +39,17 @@ var _ = Describe("Client", func() {
 		})
 	})
 
-	Context("GetPRBranch", func() {
+	Context("GetPRBranches", func() {
 		var (
-			server *httptest.Server
-			branch string
-			err    error
+			server   *httptest.Server
+			branches bitbucket.PRBranches
+			err      error
 		)
 
 		JustBeforeEach(func() {
 			client = bitbucket.NewClient(token)
 			// Use server.URL directly (includes http:// scheme for testing)
-			branch, err = client.GetPRBranch(ctx, server.URL, "PROJ", "repo", 123)
+			branches, err = client.GetPRBranches(ctx, server.URL, "PROJ", "repo", 123)
 		})
 
 		AfterEach(func() {
@@ -72,6 +72,9 @@ var _ = Describe("Client", func() {
 							"fromRef": map[string]interface{}{
 								"displayId": "feature/my-branch",
 							},
+							"toRef": map[string]interface{}{
+								"displayId": "master",
+							},
 						}
 						w.Header().Set("Content-Type", "application/json")
 						w.WriteHeader(http.StatusOK)
@@ -80,9 +83,10 @@ var _ = Describe("Client", func() {
 				)
 			})
 
-			It("returns the branch name", func() {
+			It("returns the source and target branch names", func() {
 				Expect(err).To(BeNil())
-				Expect(branch).To(Equal("feature/my-branch"))
+				Expect(branches.Source).To(Equal("feature/my-branch"))
+				Expect(branches.Target).To(Equal("master"))
 			})
 		})
 
@@ -137,13 +141,16 @@ var _ = Describe("Client", func() {
 			})
 		})
 
-		Context("empty branch in response", func() {
+		Context("empty source branch in response", func() {
 			BeforeEach(func() {
 				server = httptest.NewServer(
 					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						response := map[string]interface{}{
 							"fromRef": map[string]interface{}{
 								"displayId": "",
+							},
+							"toRef": map[string]interface{}{
+								"displayId": "master",
 							},
 						}
 						w.Header().Set("Content-Type", "application/json")
@@ -156,6 +163,31 @@ var _ = Describe("Client", func() {
 			It("returns error", func() {
 				Expect(err).NotTo(BeNil())
 				Expect(err.Error()).To(ContainSubstring("missing source branch"))
+			})
+		})
+
+		Context("empty target branch in response", func() {
+			BeforeEach(func() {
+				server = httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						response := map[string]interface{}{
+							"fromRef": map[string]interface{}{
+								"displayId": "feature/my-branch",
+							},
+							"toRef": map[string]interface{}{
+								"displayId": "",
+							},
+						}
+						w.Header().Set("Content-Type", "application/json")
+						w.WriteHeader(http.StatusOK)
+						_ = json.NewEncoder(w).Encode(response)
+					}),
+				)
+			})
+
+			It("returns error", func() {
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("missing target branch"))
 			})
 		})
 
@@ -190,7 +222,7 @@ var _ = Describe("Client", func() {
 				defer testServer.Close()
 
 				client := bitbucket.NewClient(token)
-				_, err := client.GetPRBranch(cancelCtx, testServer.URL, "PROJ", "repo", 123)
+				_, err := client.GetPRBranches(cancelCtx, testServer.URL, "PROJ", "repo", 123)
 
 				Expect(err).NotTo(BeNil())
 				Expect(err.Error()).To(ContainSubstring("context canceled"))

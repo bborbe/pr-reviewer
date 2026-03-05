@@ -540,7 +540,7 @@ repos:
 					{
 						URL:  "https://github.com/bborbe/pr-reviewer",
 						Path: "/home/user/pr-reviewer",
-						// ReviewCommand not set - should default to "/code-review"
+						// ReviewCommand not set - remains empty, main.go builds dynamically
 					},
 				},
 			}
@@ -581,8 +581,8 @@ repos:
 				Expect(repoInfo.Path).To(Equal("/home/user/pr-reviewer"))
 			})
 
-			It("defaults reviewCommand to /code-review", func() {
-				Expect(repoInfo.ReviewCommand).To(Equal("/code-review"))
+			It("returns empty reviewCommand when not configured", func() {
+				Expect(repoInfo.ReviewCommand).To(BeEmpty())
 			})
 		})
 

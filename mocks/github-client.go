@@ -10,20 +10,20 @@ import (
 )
 
 type GitHubClient struct {
-	GetPRBranchStub        func(context.Context, string, string, int) (string, error)
-	getPRBranchMutex       sync.RWMutex
-	getPRBranchArgsForCall []struct {
+	GetPRBranchesStub        func(context.Context, string, string, int) (github.PRBranches, error)
+	getPRBranchesMutex       sync.RWMutex
+	getPRBranchesArgsForCall []struct {
 		arg1 context.Context
 		arg2 string
 		arg3 string
 		arg4 int
 	}
-	getPRBranchReturns struct {
-		result1 string
+	getPRBranchesReturns struct {
+		result1 github.PRBranches
 		result2 error
 	}
-	getPRBranchReturnsOnCall map[int]struct {
-		result1 string
+	getPRBranchesReturnsOnCall map[int]struct {
+		result1 github.PRBranches
 		result2 error
 	}
 	PostCommentStub        func(context.Context, string, string, int, string) error
@@ -61,19 +61,19 @@ type GitHubClient struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *GitHubClient) GetPRBranch(arg1 context.Context, arg2 string, arg3 string, arg4 int) (string, error) {
-	fake.getPRBranchMutex.Lock()
-	ret, specificReturn := fake.getPRBranchReturnsOnCall[len(fake.getPRBranchArgsForCall)]
-	fake.getPRBranchArgsForCall = append(fake.getPRBranchArgsForCall, struct {
+func (fake *GitHubClient) GetPRBranches(arg1 context.Context, arg2 string, arg3 string, arg4 int) (github.PRBranches, error) {
+	fake.getPRBranchesMutex.Lock()
+	ret, specificReturn := fake.getPRBranchesReturnsOnCall[len(fake.getPRBranchesArgsForCall)]
+	fake.getPRBranchesArgsForCall = append(fake.getPRBranchesArgsForCall, struct {
 		arg1 context.Context
 		arg2 string
 		arg3 string
 		arg4 int
 	}{arg1, arg2, arg3, arg4})
-	stub := fake.GetPRBranchStub
-	fakeReturns := fake.getPRBranchReturns
-	fake.recordInvocation("GetPRBranch", []interface{}{arg1, arg2, arg3, arg4})
-	fake.getPRBranchMutex.Unlock()
+	stub := fake.GetPRBranchesStub
+	fakeReturns := fake.getPRBranchesReturns
+	fake.recordInvocation("GetPRBranches", []interface{}{arg1, arg2, arg3, arg4})
+	fake.getPRBranchesMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3, arg4)
 	}
@@ -83,47 +83,47 @@ func (fake *GitHubClient) GetPRBranch(arg1 context.Context, arg2 string, arg3 st
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *GitHubClient) GetPRBranchCallCount() int {
-	fake.getPRBranchMutex.RLock()
-	defer fake.getPRBranchMutex.RUnlock()
-	return len(fake.getPRBranchArgsForCall)
+func (fake *GitHubClient) GetPRBranchesCallCount() int {
+	fake.getPRBranchesMutex.RLock()
+	defer fake.getPRBranchesMutex.RUnlock()
+	return len(fake.getPRBranchesArgsForCall)
 }
 
-func (fake *GitHubClient) GetPRBranchCalls(stub func(context.Context, string, string, int) (string, error)) {
-	fake.getPRBranchMutex.Lock()
-	defer fake.getPRBranchMutex.Unlock()
-	fake.GetPRBranchStub = stub
+func (fake *GitHubClient) GetPRBranchesCalls(stub func(context.Context, string, string, int) (github.PRBranches, error)) {
+	fake.getPRBranchesMutex.Lock()
+	defer fake.getPRBranchesMutex.Unlock()
+	fake.GetPRBranchesStub = stub
 }
 
-func (fake *GitHubClient) GetPRBranchArgsForCall(i int) (context.Context, string, string, int) {
-	fake.getPRBranchMutex.RLock()
-	defer fake.getPRBranchMutex.RUnlock()
-	argsForCall := fake.getPRBranchArgsForCall[i]
+func (fake *GitHubClient) GetPRBranchesArgsForCall(i int) (context.Context, string, string, int) {
+	fake.getPRBranchesMutex.RLock()
+	defer fake.getPRBranchesMutex.RUnlock()
+	argsForCall := fake.getPRBranchesArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
-func (fake *GitHubClient) GetPRBranchReturns(result1 string, result2 error) {
-	fake.getPRBranchMutex.Lock()
-	defer fake.getPRBranchMutex.Unlock()
-	fake.GetPRBranchStub = nil
-	fake.getPRBranchReturns = struct {
-		result1 string
+func (fake *GitHubClient) GetPRBranchesReturns(result1 github.PRBranches, result2 error) {
+	fake.getPRBranchesMutex.Lock()
+	defer fake.getPRBranchesMutex.Unlock()
+	fake.GetPRBranchesStub = nil
+	fake.getPRBranchesReturns = struct {
+		result1 github.PRBranches
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *GitHubClient) GetPRBranchReturnsOnCall(i int, result1 string, result2 error) {
-	fake.getPRBranchMutex.Lock()
-	defer fake.getPRBranchMutex.Unlock()
-	fake.GetPRBranchStub = nil
-	if fake.getPRBranchReturnsOnCall == nil {
-		fake.getPRBranchReturnsOnCall = make(map[int]struct {
-			result1 string
+func (fake *GitHubClient) GetPRBranchesReturnsOnCall(i int, result1 github.PRBranches, result2 error) {
+	fake.getPRBranchesMutex.Lock()
+	defer fake.getPRBranchesMutex.Unlock()
+	fake.GetPRBranchesStub = nil
+	if fake.getPRBranchesReturnsOnCall == nil {
+		fake.getPRBranchesReturnsOnCall = make(map[int]struct {
+			result1 github.PRBranches
 			result2 error
 		})
 	}
-	fake.getPRBranchReturnsOnCall[i] = struct {
-		result1 string
+	fake.getPRBranchesReturnsOnCall[i] = struct {
+		result1 github.PRBranches
 		result2 error
 	}{result1, result2}
 }

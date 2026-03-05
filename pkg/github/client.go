@@ -16,11 +16,17 @@ import (
 	"github.com/bborbe/pr-reviewer/pkg/verdict"
 )
 
+// PRBranches holds the source and target branch names of a pull request.
+type PRBranches struct {
+	Source string
+	Target string
+}
+
 // Client interacts with GitHub via the gh CLI.
 //
 //counterfeiter:generate -o ../../mocks/github-client.go --fake-name GitHubClient . Client
 type Client interface {
-	GetPRBranch(ctx context.Context, owner, repo string, number int) (string, error)
+	GetPRBranches(ctx context.Context, owner, repo string, number int) (PRBranches, error)
 	PostComment(ctx context.Context, owner, repo string, number int, body string) error
 	SubmitReview(
 		ctx context.Context,
@@ -41,12 +47,12 @@ type ghClient struct {
 	token string
 }
 
-// GetPRBranch fetches the source branch name (headRefName) for a pull request.
-func (c *ghClient) GetPRBranch(
+// GetPRBranches fetches the source and target branch names for a pull request.
+func (c *ghClient) GetPRBranches(
 	ctx context.Context,
 	owner, repo string,
 	number int,
-) (string, error) {
+) (PRBranches, error) {
 	repoArg := fmt.Sprintf("%s/%s", owner, repo)
 	numberArg := strconv.Itoa(number)
 
@@ -54,8 +60,8 @@ func (c *ghClient) GetPRBranch(
 	cmd := exec.CommandContext(ctx, "gh", "pr", "view",
 		numberArg,
 		"--repo", repoArg,
-		"--json", "headRefName",
-		"--jq", ".headRefName",
+		"--json", "headRefName,baseRefName",
+		"--jq", ".headRefName + \"\\n\" + .baseRefName",
 	)
 
 	// Set GH_TOKEN if configured
@@ -68,15 +74,18 @@ func (c *ghClient) GetPRBranch(
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("gh pr view failed: %s", strings.TrimSpace(stderr.String()))
+		return PRBranches{}, fmt.Errorf("gh pr view failed: %s", strings.TrimSpace(stderr.String()))
 	}
 
-	branch := strings.TrimSpace(stdout.String())
-	if branch == "" {
-		return "", fmt.Errorf("gh pr view returned empty branch name")
+	lines := strings.Split(strings.TrimSpace(stdout.String()), "\n")
+	if len(lines) < 2 || lines[0] == "" || lines[1] == "" {
+		return PRBranches{}, fmt.Errorf("gh pr view returned incomplete branch info")
 	}
 
-	return branch, nil
+	return PRBranches{
+		Source: lines[0],
+		Target: lines[1],
+	}, nil
 }
 
 // PostComment posts a comment on a pull request.

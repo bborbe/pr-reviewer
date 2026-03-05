@@ -8,6 +8,12 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.5.0
+
+- Use /pr-review command with target branch for diff-scoped reviews instead of /code-review
+- Fetch both source and target branch from GitHub and Bitbucket PR APIs
+- Rename GetPRBranch to GetPRBranches returning source and target branch pair
+
 ## v0.4.1
 
 - Add progress logging for long-running operations (fetch, worktree, review, post)

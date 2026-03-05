@@ -39,10 +39,10 @@ var _ = Describe("Client", func() {
 		})
 	})
 
-	Context("GetPRBranch", func() {
+	Context("GetPRBranches", func() {
 		It("requires valid context", func() {
 			client := github.NewGHClient("")
-			_, err := client.GetPRBranch(ctx, "owner", "repo", 123)
+			_, err := client.GetPRBranches(ctx, "owner", "repo", 123)
 			// Will fail in test env without gh CLI, but validates interface contract
 			Expect(err).To(HaveOccurred())
 		})
@@ -51,7 +51,7 @@ var _ = Describe("Client", func() {
 			client := github.NewGHClient("")
 			cancelCtx, cancel := context.WithCancel(ctx)
 			cancel() // Cancel immediately
-			_, err := client.GetPRBranch(cancelCtx, "owner", "repo", 123)
+			_, err := client.GetPRBranches(cancelCtx, "owner", "repo", 123)
 			Expect(err).To(HaveOccurred())
 		})
 	})

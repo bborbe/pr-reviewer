@@ -186,19 +186,15 @@ func (c *Config) FindRepoPath(repoURL string) (string, error) {
 
 // FindRepo looks up the repository information including path and review command.
 // Returns RepoInfo with path and reviewCommand. If reviewCommand is not specified,
-// defaults to "/code-review".
+// it remains empty and main.go will construct "/pr-review <target-branch>" dynamically.
 func (c *Config) FindRepo(repoURL string) (*RepoInfo, error) {
 	normalizedURL := normalizeURL(repoURL)
 
 	for _, repo := range c.Repos {
 		if normalizeURL(repo.URL) == normalizedURL {
-			reviewCmd := repo.ReviewCommand
-			if reviewCmd == "" {
-				reviewCmd = "/code-review"
-			}
 			return &RepoInfo{
 				Path:          repo.Path,
-				ReviewCommand: reviewCmd,
+				ReviewCommand: repo.ReviewCommand,
 			}, nil
 		}
 	}

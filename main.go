@@ -115,20 +115,20 @@ func runGitHub(
 	)
 	ghClient := github.NewGHClient(resolvedToken)
 
-	// Get PR branch name
+	// Get PR branch names
 	logAlways("fetching PR #%d metadata...", prInfo.Number)
-	branch, err := ghClient.GetPRBranch(ctx, prInfo.Owner, prInfo.Repo, prInfo.Number)
+	branches, err := ghClient.GetPRBranches(ctx, prInfo.Owner, prInfo.Repo, prInfo.Number)
 	if err != nil {
-		return errors.Wrap(ctx, err, "get PR branch failed")
+		return errors.Wrap(ctx, err, "get PR branches failed")
 	}
-	logVerbose(verbose, "fetching branch: %s", branch)
+	logVerbose(verbose, "source branch: %s, target branch: %s", branches.Source, branches.Target)
 
 	// Create worktree and run review
 	worktreePath, cleanup, err := createWorktreeAndFetch(
 		ctx,
 		verbose,
 		repoPath,
-		branch,
+		branches.Source,
 		prInfo.Number,
 	)
 	if err != nil {
@@ -138,11 +138,12 @@ func runGitHub(
 
 	// Run review
 	reviewer := review.NewClaudeReviewer()
+	reviewCommand := buildReviewCommand(repoInfo.ReviewCommand, branches.Target)
 	reviewText, result, err := runReview(
 		ctx,
 		reviewer,
 		worktreePath,
-		repoInfo.ReviewCommand,
+		reviewCommand,
 		cfg.ResolvedModel(),
 		prInfo,
 	)
@@ -178,9 +179,9 @@ func runBitbucket(
 	}
 	bbClient := bitbucket.NewClient(resolvedToken)
 
-	// Get PR branch name
+	// Get PR branch names
 	logAlways("fetching PR #%d metadata...", prInfo.Number)
-	branch, err := bbClient.GetPRBranch(
+	branches, err := bbClient.GetPRBranches(
 		ctx,
 		prInfo.Host,
 		prInfo.Project,
@@ -188,16 +189,16 @@ func runBitbucket(
 		prInfo.Number,
 	)
 	if err != nil {
-		return errors.Wrap(ctx, err, "get PR branch failed")
+		return errors.Wrap(ctx, err, "get PR branches failed")
 	}
-	logVerbose(verbose, "fetching branch: %s", branch)
+	logVerbose(verbose, "source branch: %s, target branch: %s", branches.Source, branches.Target)
 
 	// Create worktree and run review
 	worktreePath, cleanup, err := createWorktreeAndFetch(
 		ctx,
 		verbose,
 		repoPath,
-		branch,
+		branches.Source,
 		prInfo.Number,
 	)
 	if err != nil {
@@ -207,11 +208,12 @@ func runBitbucket(
 
 	// Run review
 	reviewer := review.NewClaudeReviewer()
+	reviewCommand := buildReviewCommand(repoInfo.ReviewCommand, branches.Target)
 	reviewText, result, err := runReview(
 		ctx,
 		reviewer,
 		worktreePath,
-		repoInfo.ReviewCommand,
+		reviewCommand,
 		cfg.ResolvedModel(),
 		prInfo,
 	)
@@ -420,6 +422,16 @@ func submitBitbucketReview(
 	// VerdictComment - no verdict action needed
 	logAlways("done")
 	return nil
+}
+
+// buildReviewCommand constructs the review command with the target branch.
+// If reviewCommand is set (custom override), use it as-is.
+// Otherwise, construct "/pr-review <targetBranch>".
+func buildReviewCommand(reviewCommand, targetBranch string) string {
+	if reviewCommand != "" {
+		return reviewCommand
+	}
+	return fmt.Sprintf("/pr-review %s", targetBranch)
 }
 
 // logTokenStatus logs the token source and whether it resolved to a value.

@@ -24,21 +24,21 @@ type BitbucketClient struct {
 	approveReturnsOnCall map[int]struct {
 		result1 error
 	}
-	GetPRBranchStub        func(context.Context, string, string, string, int) (string, error)
-	getPRBranchMutex       sync.RWMutex
-	getPRBranchArgsForCall []struct {
+	GetPRBranchesStub        func(context.Context, string, string, string, int) (bitbucket.PRBranches, error)
+	getPRBranchesMutex       sync.RWMutex
+	getPRBranchesArgsForCall []struct {
 		arg1 context.Context
 		arg2 string
 		arg3 string
 		arg4 string
 		arg5 int
 	}
-	getPRBranchReturns struct {
-		result1 string
+	getPRBranchesReturns struct {
+		result1 bitbucket.PRBranches
 		result2 error
 	}
-	getPRBranchReturnsOnCall map[int]struct {
-		result1 string
+	getPRBranchesReturnsOnCall map[int]struct {
+		result1 bitbucket.PRBranches
 		result2 error
 	}
 	GetProfileStub        func(context.Context, string) (bitbucket.Profile, error)
@@ -156,20 +156,20 @@ func (fake *BitbucketClient) ApproveReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *BitbucketClient) GetPRBranch(arg1 context.Context, arg2 string, arg3 string, arg4 string, arg5 int) (string, error) {
-	fake.getPRBranchMutex.Lock()
-	ret, specificReturn := fake.getPRBranchReturnsOnCall[len(fake.getPRBranchArgsForCall)]
-	fake.getPRBranchArgsForCall = append(fake.getPRBranchArgsForCall, struct {
+func (fake *BitbucketClient) GetPRBranches(arg1 context.Context, arg2 string, arg3 string, arg4 string, arg5 int) (bitbucket.PRBranches, error) {
+	fake.getPRBranchesMutex.Lock()
+	ret, specificReturn := fake.getPRBranchesReturnsOnCall[len(fake.getPRBranchesArgsForCall)]
+	fake.getPRBranchesArgsForCall = append(fake.getPRBranchesArgsForCall, struct {
 		arg1 context.Context
 		arg2 string
 		arg3 string
 		arg4 string
 		arg5 int
 	}{arg1, arg2, arg3, arg4, arg5})
-	stub := fake.GetPRBranchStub
-	fakeReturns := fake.getPRBranchReturns
-	fake.recordInvocation("GetPRBranch", []interface{}{arg1, arg2, arg3, arg4, arg5})
-	fake.getPRBranchMutex.Unlock()
+	stub := fake.GetPRBranchesStub
+	fakeReturns := fake.getPRBranchesReturns
+	fake.recordInvocation("GetPRBranches", []interface{}{arg1, arg2, arg3, arg4, arg5})
+	fake.getPRBranchesMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3, arg4, arg5)
 	}
@@ -179,47 +179,47 @@ func (fake *BitbucketClient) GetPRBranch(arg1 context.Context, arg2 string, arg3
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *BitbucketClient) GetPRBranchCallCount() int {
-	fake.getPRBranchMutex.RLock()
-	defer fake.getPRBranchMutex.RUnlock()
-	return len(fake.getPRBranchArgsForCall)
+func (fake *BitbucketClient) GetPRBranchesCallCount() int {
+	fake.getPRBranchesMutex.RLock()
+	defer fake.getPRBranchesMutex.RUnlock()
+	return len(fake.getPRBranchesArgsForCall)
 }
 
-func (fake *BitbucketClient) GetPRBranchCalls(stub func(context.Context, string, string, string, int) (string, error)) {
-	fake.getPRBranchMutex.Lock()
-	defer fake.getPRBranchMutex.Unlock()
-	fake.GetPRBranchStub = stub
+func (fake *BitbucketClient) GetPRBranchesCalls(stub func(context.Context, string, string, string, int) (bitbucket.PRBranches, error)) {
+	fake.getPRBranchesMutex.Lock()
+	defer fake.getPRBranchesMutex.Unlock()
+	fake.GetPRBranchesStub = stub
 }
 
-func (fake *BitbucketClient) GetPRBranchArgsForCall(i int) (context.Context, string, string, string, int) {
-	fake.getPRBranchMutex.RLock()
-	defer fake.getPRBranchMutex.RUnlock()
-	argsForCall := fake.getPRBranchArgsForCall[i]
+func (fake *BitbucketClient) GetPRBranchesArgsForCall(i int) (context.Context, string, string, string, int) {
+	fake.getPRBranchesMutex.RLock()
+	defer fake.getPRBranchesMutex.RUnlock()
+	argsForCall := fake.getPRBranchesArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5
 }
 
-func (fake *BitbucketClient) GetPRBranchReturns(result1 string, result2 error) {
-	fake.getPRBranchMutex.Lock()
-	defer fake.getPRBranchMutex.Unlock()
-	fake.GetPRBranchStub = nil
-	fake.getPRBranchReturns = struct {
-		result1 string
+func (fake *BitbucketClient) GetPRBranchesReturns(result1 bitbucket.PRBranches, result2 error) {
+	fake.getPRBranchesMutex.Lock()
+	defer fake.getPRBranchesMutex.Unlock()
+	fake.GetPRBranchesStub = nil
+	fake.getPRBranchesReturns = struct {
+		result1 bitbucket.PRBranches
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *BitbucketClient) GetPRBranchReturnsOnCall(i int, result1 string, result2 error) {
-	fake.getPRBranchMutex.Lock()
-	defer fake.getPRBranchMutex.Unlock()
-	fake.GetPRBranchStub = nil
-	if fake.getPRBranchReturnsOnCall == nil {
-		fake.getPRBranchReturnsOnCall = make(map[int]struct {
-			result1 string
+func (fake *BitbucketClient) GetPRBranchesReturnsOnCall(i int, result1 bitbucket.PRBranches, result2 error) {
+	fake.getPRBranchesMutex.Lock()
+	defer fake.getPRBranchesMutex.Unlock()
+	fake.GetPRBranchesStub = nil
+	if fake.getPRBranchesReturnsOnCall == nil {
+		fake.getPRBranchesReturnsOnCall = make(map[int]struct {
+			result1 bitbucket.PRBranches
 			result2 error
 		})
 	}
-	fake.getPRBranchReturnsOnCall[i] = struct {
-		result1 string
+	fake.getPRBranchesReturnsOnCall[i] = struct {
+		result1 bitbucket.PRBranches
 		result2 error
 	}{result1, result2}
 }
