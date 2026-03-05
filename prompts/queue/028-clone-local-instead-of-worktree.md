@@ -1,5 +1,5 @@
 ---
-status: created
+status: queued
 ---
 <objective>
 Replace git worktree with `git clone --local` to /tmp. Worktrees create a `.git` file with absolute host paths that break when mounted into Docker containers. A local clone creates a standalone `.git` directory that works with Docker volume mounts.
