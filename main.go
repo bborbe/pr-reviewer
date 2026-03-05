@@ -301,7 +301,10 @@ func runReview(
 	result := verdict.Parse(reviewText)
 	logAlways("verdict: %s (%s)", result.Verdict, result.Reason)
 
-	return reviewText, result, nil
+	// Strip JSON verdict block before posting to PR
+	cleanedText := verdict.StripJSONVerdict(reviewText)
+
+	return cleanedText, result, nil
 }
 
 // submitGitHubReview submits the review to GitHub using the appropriate method.
