@@ -20,6 +20,9 @@ import (
 type Client interface {
 	GetPRBranch(ctx context.Context, host, project, repo string, number int) (string, error)
 	PostComment(ctx context.Context, host, project, repo string, number int, body string) error
+	GetProfile(ctx context.Context, host string) (Profile, error)
+	Approve(ctx context.Context, host, project, repo string, number int) error
+	NeedsWork(ctx context.Context, host, project, repo string, number int, userSlug string) error
 }
 
 // NewClient creates a Client that uses the Bitbucket Server REST API.
@@ -44,6 +47,21 @@ type prResponse struct {
 
 type commentRequest struct {
 	Text string `json:"text"`
+}
+
+// Profile represents the authenticated user's profile information.
+type Profile struct {
+	Slug string `json:"slug"`
+}
+
+type participantRequest struct {
+	User     participantUser `json:"user"`
+	Approved bool            `json:"approved"`
+	Status   string          `json:"status"`
+}
+
+type participantUser struct {
+	Slug string `json:"slug"`
 }
 
 // GetPRBranch fetches the source branch name for a pull request.
@@ -130,6 +148,123 @@ func (c *httpClient) PostComment(
 	return nil
 }
 
+// GetProfile fetches the authenticated user's profile.
+func (c *httpClient) GetProfile(ctx context.Context, host string) (Profile, error) {
+	url := c.buildURL(host, "/rest/api/1.0/profile")
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return Profile{}, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+c.token)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return Profile{}, fmt.Errorf("request failed for %s: %w", host, err)
+	}
+	defer resp.Body.Close()
+
+	if err := checkProfileResponseStatus(resp, host); err != nil {
+		return Profile{}, err
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return Profile{}, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	var profile Profile
+	if err := json.Unmarshal(body, &profile); err != nil {
+		return Profile{}, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	if profile.Slug == "" {
+		return Profile{}, fmt.Errorf("profile response missing slug")
+	}
+
+	return profile, nil
+}
+
+// Approve approves a pull request.
+func (c *httpClient) Approve(
+	ctx context.Context,
+	host, project, repo string,
+	number int,
+) error {
+	url := c.buildURL(
+		host,
+		fmt.Sprintf("/rest/api/1.0/projects/%s/repos/%s/pull-requests/%d/approve",
+			project, repo, number),
+	)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+c.token)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed for %s: %w", host, err)
+	}
+	defer resp.Body.Close()
+
+	if err := checkApproveResponseStatus(resp, host, project, repo, number); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// NeedsWork marks a pull request as needing work.
+func (c *httpClient) NeedsWork(
+	ctx context.Context,
+	host, project, repo string,
+	number int,
+	userSlug string,
+) error {
+	url := c.buildURL(
+		host,
+		fmt.Sprintf("/rest/api/1.0/projects/%s/repos/%s/pull-requests/%d/participants/%s",
+			project, repo, number, userSlug),
+	)
+
+	participantReq := participantRequest{
+		User: participantUser{
+			Slug: userSlug,
+		},
+		Approved: false,
+		Status:   "NEEDS_WORK",
+	}
+
+	jsonData, err := json.Marshal(participantReq)
+	if err != nil {
+		return fmt.Errorf("failed to marshal participant request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, bytes.NewReader(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+c.token)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed for %s: %w", host, err)
+	}
+	defer resp.Body.Close()
+
+	if err := checkResponseStatus(resp, host, project, repo, number); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // buildURL constructs the full URL with scheme detection.
 // If host contains a scheme (http:// or https://), use it as-is.
 // Otherwise, default to https:// for production Bitbucket Server instances.
@@ -145,6 +280,40 @@ func (c *httpClient) buildURL(host, path string) string {
 func checkResponseStatus(resp *http.Response, host, project, repo string, number int) error {
 	switch resp.StatusCode {
 	case http.StatusOK, http.StatusCreated:
+		return nil
+	case http.StatusUnauthorized:
+		return fmt.Errorf("authentication failed for %s", host)
+	case http.StatusForbidden:
+		return fmt.Errorf("insufficient permissions for %s", host)
+	case http.StatusNotFound:
+		return fmt.Errorf("PR not found: %s/projects/%s/repos/%s/pull-requests/%d",
+			host, project, repo, number)
+	default:
+		return fmt.Errorf("unexpected status %d from %s", resp.StatusCode, host)
+	}
+}
+
+// checkProfileResponseStatus validates HTTP response status for profile requests.
+// Token is intentionally excluded from error messages for security.
+func checkProfileResponseStatus(resp *http.Response, host string) error {
+	switch resp.StatusCode {
+	case http.StatusOK:
+		return nil
+	case http.StatusUnauthorized:
+		return fmt.Errorf("authentication failed for %s", host)
+	case http.StatusForbidden:
+		return fmt.Errorf("insufficient permissions for %s", host)
+	default:
+		return fmt.Errorf("unexpected status %d from %s", resp.StatusCode, host)
+	}
+}
+
+// checkApproveResponseStatus validates HTTP response status for approve requests.
+// Treats 409 Conflict (already approved) as success.
+// Token is intentionally excluded from error messages for security.
+func checkApproveResponseStatus(resp *http.Response, host, project, repo string, number int) error {
+	switch resp.StatusCode {
+	case http.StatusOK, http.StatusCreated, http.StatusConflict:
 		return nil
 	case http.StatusUnauthorized:
 		return fmt.Errorf("authentication failed for %s", host)

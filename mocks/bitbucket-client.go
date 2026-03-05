@@ -9,6 +9,21 @@ import (
 )
 
 type BitbucketClient struct {
+	ApproveStub        func(context.Context, string, string, string, int) error
+	approveMutex       sync.RWMutex
+	approveArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 string
+		arg4 string
+		arg5 int
+	}
+	approveReturns struct {
+		result1 error
+	}
+	approveReturnsOnCall map[int]struct {
+		result1 error
+	}
 	GetPRBranchStub        func(context.Context, string, string, string, int) (string, error)
 	getPRBranchMutex       sync.RWMutex
 	getPRBranchArgsForCall []struct {
@@ -25,6 +40,36 @@ type BitbucketClient struct {
 	getPRBranchReturnsOnCall map[int]struct {
 		result1 string
 		result2 error
+	}
+	GetProfileStub        func(context.Context, string) (bitbucket.Profile, error)
+	getProfileMutex       sync.RWMutex
+	getProfileArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+	}
+	getProfileReturns struct {
+		result1 bitbucket.Profile
+		result2 error
+	}
+	getProfileReturnsOnCall map[int]struct {
+		result1 bitbucket.Profile
+		result2 error
+	}
+	NeedsWorkStub        func(context.Context, string, string, string, int, string) error
+	needsWorkMutex       sync.RWMutex
+	needsWorkArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 string
+		arg4 string
+		arg5 int
+		arg6 string
+	}
+	needsWorkReturns struct {
+		result1 error
+	}
+	needsWorkReturnsOnCall map[int]struct {
+		result1 error
 	}
 	PostCommentStub        func(context.Context, string, string, string, int, string) error
 	postCommentMutex       sync.RWMutex
@@ -44,6 +89,71 @@ type BitbucketClient struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *BitbucketClient) Approve(arg1 context.Context, arg2 string, arg3 string, arg4 string, arg5 int) error {
+	fake.approveMutex.Lock()
+	ret, specificReturn := fake.approveReturnsOnCall[len(fake.approveArgsForCall)]
+	fake.approveArgsForCall = append(fake.approveArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 string
+		arg4 string
+		arg5 int
+	}{arg1, arg2, arg3, arg4, arg5})
+	stub := fake.ApproveStub
+	fakeReturns := fake.approveReturns
+	fake.recordInvocation("Approve", []interface{}{arg1, arg2, arg3, arg4, arg5})
+	fake.approveMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3, arg4, arg5)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *BitbucketClient) ApproveCallCount() int {
+	fake.approveMutex.RLock()
+	defer fake.approveMutex.RUnlock()
+	return len(fake.approveArgsForCall)
+}
+
+func (fake *BitbucketClient) ApproveCalls(stub func(context.Context, string, string, string, int) error) {
+	fake.approveMutex.Lock()
+	defer fake.approveMutex.Unlock()
+	fake.ApproveStub = stub
+}
+
+func (fake *BitbucketClient) ApproveArgsForCall(i int) (context.Context, string, string, string, int) {
+	fake.approveMutex.RLock()
+	defer fake.approveMutex.RUnlock()
+	argsForCall := fake.approveArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5
+}
+
+func (fake *BitbucketClient) ApproveReturns(result1 error) {
+	fake.approveMutex.Lock()
+	defer fake.approveMutex.Unlock()
+	fake.ApproveStub = nil
+	fake.approveReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *BitbucketClient) ApproveReturnsOnCall(i int, result1 error) {
+	fake.approveMutex.Lock()
+	defer fake.approveMutex.Unlock()
+	fake.ApproveStub = nil
+	if fake.approveReturnsOnCall == nil {
+		fake.approveReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.approveReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
 }
 
 func (fake *BitbucketClient) GetPRBranch(arg1 context.Context, arg2 string, arg3 string, arg4 string, arg5 int) (string, error) {
@@ -112,6 +222,137 @@ func (fake *BitbucketClient) GetPRBranchReturnsOnCall(i int, result1 string, res
 		result1 string
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *BitbucketClient) GetProfile(arg1 context.Context, arg2 string) (bitbucket.Profile, error) {
+	fake.getProfileMutex.Lock()
+	ret, specificReturn := fake.getProfileReturnsOnCall[len(fake.getProfileArgsForCall)]
+	fake.getProfileArgsForCall = append(fake.getProfileArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+	}{arg1, arg2})
+	stub := fake.GetProfileStub
+	fakeReturns := fake.getProfileReturns
+	fake.recordInvocation("GetProfile", []interface{}{arg1, arg2})
+	fake.getProfileMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *BitbucketClient) GetProfileCallCount() int {
+	fake.getProfileMutex.RLock()
+	defer fake.getProfileMutex.RUnlock()
+	return len(fake.getProfileArgsForCall)
+}
+
+func (fake *BitbucketClient) GetProfileCalls(stub func(context.Context, string) (bitbucket.Profile, error)) {
+	fake.getProfileMutex.Lock()
+	defer fake.getProfileMutex.Unlock()
+	fake.GetProfileStub = stub
+}
+
+func (fake *BitbucketClient) GetProfileArgsForCall(i int) (context.Context, string) {
+	fake.getProfileMutex.RLock()
+	defer fake.getProfileMutex.RUnlock()
+	argsForCall := fake.getProfileArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *BitbucketClient) GetProfileReturns(result1 bitbucket.Profile, result2 error) {
+	fake.getProfileMutex.Lock()
+	defer fake.getProfileMutex.Unlock()
+	fake.GetProfileStub = nil
+	fake.getProfileReturns = struct {
+		result1 bitbucket.Profile
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *BitbucketClient) GetProfileReturnsOnCall(i int, result1 bitbucket.Profile, result2 error) {
+	fake.getProfileMutex.Lock()
+	defer fake.getProfileMutex.Unlock()
+	fake.GetProfileStub = nil
+	if fake.getProfileReturnsOnCall == nil {
+		fake.getProfileReturnsOnCall = make(map[int]struct {
+			result1 bitbucket.Profile
+			result2 error
+		})
+	}
+	fake.getProfileReturnsOnCall[i] = struct {
+		result1 bitbucket.Profile
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *BitbucketClient) NeedsWork(arg1 context.Context, arg2 string, arg3 string, arg4 string, arg5 int, arg6 string) error {
+	fake.needsWorkMutex.Lock()
+	ret, specificReturn := fake.needsWorkReturnsOnCall[len(fake.needsWorkArgsForCall)]
+	fake.needsWorkArgsForCall = append(fake.needsWorkArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 string
+		arg4 string
+		arg5 int
+		arg6 string
+	}{arg1, arg2, arg3, arg4, arg5, arg6})
+	stub := fake.NeedsWorkStub
+	fakeReturns := fake.needsWorkReturns
+	fake.recordInvocation("NeedsWork", []interface{}{arg1, arg2, arg3, arg4, arg5, arg6})
+	fake.needsWorkMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3, arg4, arg5, arg6)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *BitbucketClient) NeedsWorkCallCount() int {
+	fake.needsWorkMutex.RLock()
+	defer fake.needsWorkMutex.RUnlock()
+	return len(fake.needsWorkArgsForCall)
+}
+
+func (fake *BitbucketClient) NeedsWorkCalls(stub func(context.Context, string, string, string, int, string) error) {
+	fake.needsWorkMutex.Lock()
+	defer fake.needsWorkMutex.Unlock()
+	fake.NeedsWorkStub = stub
+}
+
+func (fake *BitbucketClient) NeedsWorkArgsForCall(i int) (context.Context, string, string, string, int, string) {
+	fake.needsWorkMutex.RLock()
+	defer fake.needsWorkMutex.RUnlock()
+	argsForCall := fake.needsWorkArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5, argsForCall.arg6
+}
+
+func (fake *BitbucketClient) NeedsWorkReturns(result1 error) {
+	fake.needsWorkMutex.Lock()
+	defer fake.needsWorkMutex.Unlock()
+	fake.NeedsWorkStub = nil
+	fake.needsWorkReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *BitbucketClient) NeedsWorkReturnsOnCall(i int, result1 error) {
+	fake.needsWorkMutex.Lock()
+	defer fake.needsWorkMutex.Unlock()
+	fake.NeedsWorkStub = nil
+	if fake.needsWorkReturnsOnCall == nil {
+		fake.needsWorkReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.needsWorkReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
 }
 
 func (fake *BitbucketClient) PostComment(arg1 context.Context, arg2 string, arg3 string, arg4 string, arg5 int, arg6 string) error {

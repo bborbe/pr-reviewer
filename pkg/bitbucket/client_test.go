@@ -321,4 +321,322 @@ var _ = Describe("Client", func() {
 			})
 		})
 	})
+
+	Context("GetProfile", func() {
+		var (
+			server  *httptest.Server
+			profile bitbucket.Profile
+			err     error
+		)
+
+		JustBeforeEach(func() {
+			client = bitbucket.NewClient(token)
+			profile, err = client.GetProfile(ctx, server.URL)
+		})
+
+		AfterEach(func() {
+			if server != nil {
+				server.Close()
+			}
+		})
+
+		Context("successful response", func() {
+			BeforeEach(func() {
+				server = httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						Expect(r.Method).To(Equal(http.MethodGet))
+						Expect(r.URL.Path).To(Equal("/rest/api/1.0/profile"))
+						Expect(r.Header.Get("Authorization")).To(Equal("Bearer " + token))
+
+						response := map[string]interface{}{
+							"slug": "test-user",
+						}
+						w.Header().Set("Content-Type", "application/json")
+						w.WriteHeader(http.StatusOK)
+						_ = json.NewEncoder(w).Encode(response)
+					}),
+				)
+			})
+
+			It("returns the profile with slug", func() {
+				Expect(err).To(BeNil())
+				Expect(profile.Slug).To(Equal("test-user"))
+			})
+		})
+
+		Context("401 Unauthorized", func() {
+			BeforeEach(func() {
+				server = httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusUnauthorized)
+					}),
+				)
+			})
+
+			It("returns authentication error", func() {
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("authentication failed"))
+				Expect(err.Error()).NotTo(ContainSubstring(token))
+			})
+		})
+
+		Context("403 Forbidden", func() {
+			BeforeEach(func() {
+				server = httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusForbidden)
+					}),
+				)
+			})
+
+			It("returns permission error", func() {
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("insufficient permissions"))
+				Expect(err.Error()).NotTo(ContainSubstring(token))
+			})
+		})
+
+		Context("empty slug in response", func() {
+			BeforeEach(func() {
+				server = httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						response := map[string]interface{}{
+							"slug": "",
+						}
+						w.Header().Set("Content-Type", "application/json")
+						w.WriteHeader(http.StatusOK)
+						_ = json.NewEncoder(w).Encode(response)
+					}),
+				)
+			})
+
+			It("returns error", func() {
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("missing slug"))
+			})
+		})
+
+		Context("invalid JSON response", func() {
+			BeforeEach(func() {
+				server = httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.Header().Set("Content-Type", "application/json")
+						w.WriteHeader(http.StatusOK)
+						_, _ = w.Write([]byte("invalid json"))
+					}),
+				)
+			})
+
+			It("returns parse error", func() {
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("failed to parse"))
+			})
+		})
+	})
+
+	Context("Approve", func() {
+		var (
+			server *httptest.Server
+			err    error
+		)
+
+		JustBeforeEach(func() {
+			client = bitbucket.NewClient(token)
+			err = client.Approve(ctx, server.URL, "PROJ", "repo", 123)
+		})
+
+		AfterEach(func() {
+			if server != nil {
+				server.Close()
+			}
+		})
+
+		Context("successful response", func() {
+			BeforeEach(func() {
+				server = httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						Expect(r.Method).To(Equal(http.MethodPost))
+						Expect(
+							r.URL.Path,
+						).To(Equal("/rest/api/1.0/projects/PROJ/repos/repo/pull-requests/123/approve"))
+						Expect(r.Header.Get("Authorization")).To(Equal("Bearer " + token))
+
+						w.WriteHeader(http.StatusOK)
+					}),
+				)
+			})
+
+			It("approves successfully", func() {
+				Expect(err).To(BeNil())
+			})
+		})
+
+		Context("409 Conflict (already approved)", func() {
+			BeforeEach(func() {
+				server = httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusConflict)
+					}),
+				)
+			})
+
+			It("treats as success", func() {
+				Expect(err).To(BeNil())
+			})
+		})
+
+		Context("401 Unauthorized", func() {
+			BeforeEach(func() {
+				server = httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusUnauthorized)
+					}),
+				)
+			})
+
+			It("returns authentication error", func() {
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("authentication failed"))
+				Expect(err.Error()).NotTo(ContainSubstring(token))
+			})
+		})
+
+		Context("403 Forbidden", func() {
+			BeforeEach(func() {
+				server = httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusForbidden)
+					}),
+				)
+			})
+
+			It("returns permission error", func() {
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("insufficient permissions"))
+				Expect(err.Error()).NotTo(ContainSubstring(token))
+			})
+		})
+
+		Context("404 Not Found", func() {
+			BeforeEach(func() {
+				server = httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusNotFound)
+					}),
+				)
+			})
+
+			It("returns not found error", func() {
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("PR not found"))
+				Expect(
+					err.Error(),
+				).To(ContainSubstring("projects/PROJ/repos/repo/pull-requests/123"))
+				Expect(err.Error()).NotTo(ContainSubstring(token))
+			})
+		})
+	})
+
+	Context("NeedsWork", func() {
+		var (
+			server *httptest.Server
+			err    error
+		)
+
+		JustBeforeEach(func() {
+			client = bitbucket.NewClient(token)
+			err = client.NeedsWork(ctx, server.URL, "PROJ", "repo", 123, "test-user")
+		})
+
+		AfterEach(func() {
+			if server != nil {
+				server.Close()
+			}
+		})
+
+		Context("successful response", func() {
+			BeforeEach(func() {
+				server = httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						Expect(r.Method).To(Equal(http.MethodPut))
+						Expect(
+							r.URL.Path,
+						).To(
+							Equal(
+								"/rest/api/1.0/projects/PROJ/repos/repo/pull-requests/123/participants/test-user",
+							),
+						)
+						Expect(r.Header.Get("Authorization")).To(Equal("Bearer " + token))
+						Expect(r.Header.Get("Content-Type")).To(Equal("application/json"))
+
+						var body map[string]interface{}
+						err := json.NewDecoder(r.Body).Decode(&body)
+						Expect(err).To(BeNil())
+						Expect(body["approved"]).To(BeFalse())
+						Expect(body["status"]).To(Equal("NEEDS_WORK"))
+						user, ok := body["user"].(map[string]interface{})
+						Expect(ok).To(BeTrue())
+						Expect(user["slug"]).To(Equal("test-user"))
+
+						w.WriteHeader(http.StatusOK)
+					}),
+				)
+			})
+
+			It("sets needs work status successfully", func() {
+				Expect(err).To(BeNil())
+			})
+		})
+
+		Context("401 Unauthorized", func() {
+			BeforeEach(func() {
+				server = httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusUnauthorized)
+					}),
+				)
+			})
+
+			It("returns authentication error", func() {
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("authentication failed"))
+				Expect(err.Error()).NotTo(ContainSubstring(token))
+			})
+		})
+
+		Context("403 Forbidden", func() {
+			BeforeEach(func() {
+				server = httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusForbidden)
+					}),
+				)
+			})
+
+			It("returns permission error", func() {
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("insufficient permissions"))
+				Expect(err.Error()).NotTo(ContainSubstring(token))
+			})
+		})
+
+		Context("404 Not Found", func() {
+			BeforeEach(func() {
+				server = httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusNotFound)
+					}),
+				)
+			})
+
+			It("returns not found error", func() {
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("PR not found"))
+				Expect(
+					err.Error(),
+				).To(ContainSubstring("projects/PROJ/repos/repo/pull-requests/123"))
+				Expect(err.Error()).NotTo(ContainSubstring(token))
+			})
+		})
+	})
 })
