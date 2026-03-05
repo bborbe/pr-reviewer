@@ -1,5 +1,5 @@
 ---
-status: created
+status: queued
 ---
 <objective>
 Add a --version flag that prints the build-time version and exits.
