@@ -2,7 +2,7 @@
 tags:
   - dark-factory
   - spec
-status: draft
+status: approved
 ---
 Tags: [[Dark Factory - Spec Writing Guide]]
 
@@ -18,8 +18,8 @@ After completion, `pr-reviewer` parses the Claude review output verdict (same as
 
 ## Non-goals
 
+- Bitbucket Cloud support (only Bitbucket Server/Data Center)
 - Changing the verdict parser (spec 003 handles that)
-- Bitbucket Cloud approve/reject (different API)
 - Configurable thresholds or scoring weights
 - Revoking previous approvals
 
@@ -36,7 +36,9 @@ After completion, `pr-reviewer` parses the Claude review output verdict (same as
 ## Constraints
 
 - Spec 004 plain-comment behavior must remain the fallback when verdict is unclear
-- Must use Bitbucket Server REST API: `PUT /rest/api/1.0/projects/{project}/repos/{repo}/pull-requests/{number}/participants/{userSlug}`
+- Approve: `POST /rest/api/1.0/projects/{project}/repos/{repo}/pull-requests/{number}/approve` (no body needed)
+- Needs work: `PUT /rest/api/1.0/projects/{project}/repos/{repo}/pull-requests/{number}/participants/{userSlug}` with `{"user":{"slug":"<slug>"},"approved":false,"status":"NEEDS_WORK"}`
+- User slug fetched via `GET /rest/api/1.0/profile` (dynamic, no hardcoding) — only needed for needs-work
 - Same conservative parsing as GitHub — when in doubt, fall back to comment
 - `--comment-only` flag applies to both GitHub and Bitbucket
 
@@ -63,6 +65,12 @@ After completion, `pr-reviewer` parses the Claude review output verdict (same as
 ```
 make precommit
 ```
+
+## Resolved Questions
+
+- **How to get user slug?** `GET /rest/api/1.0/profile` returns `slug` field for the authenticated user. Only needed for needs-work (approve endpoint doesn't require it).
+- **Approve API**: `POST .../approve` — simple, no body, no user slug needed.
+- **Needs-work API**: `PUT .../participants/{userSlug}` with JSON body `{"user":{"slug":"<slug>"},"approved":false,"status":"NEEDS_WORK"}`.
 
 ## Do-Nothing Option
 
