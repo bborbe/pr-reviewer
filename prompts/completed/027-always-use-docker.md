@@ -1,5 +1,12 @@
 ---
-status: queued
+status: completed
+summary: Removed useDocker toggle and host-based claudeReviewer, making Docker-based reviews the only option
+container: pr-reviewer-027-always-use-docker
+dark-factory-version: v0.17.4
+created: "2026-03-05T19:37:54Z"
+queued: "2026-03-05T19:37:54Z"
+started: "2026-03-05T19:37:54Z"
+completed: "2026-03-05T19:43:10Z"
 ---
 <objective>
 Remove the useDocker toggle and always run reviews inside the claude-yolo Docker container. Remove the host-based claudeReviewer entirely.
