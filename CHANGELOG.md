@@ -8,6 +8,11 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.6.0
+
+- Use YOLO_OUTPUT=print for raw text output instead of stream-json extraction
+- Update default container image to claude-yolo v0.2.0
+
 ## v0.5.9
 
 - Fix Docker executor to use YOLO_PROMPT_FILE and YOLO_MODEL env vars (matching dark-factory pattern)

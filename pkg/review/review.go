@@ -31,7 +31,8 @@ type dockerReviewer struct {
 
 // Review runs claude inside a Docker container using the claude-yolo image.
 // The container mounts the worktree, Claude config, and Go module cache.
-// Uses YOLO_PROMPT_FILE pattern from dark-factory to avoid shell escaping issues.
+// Uses YOLO_PROMPT_FILE, YOLO_MODEL, and YOLO_OUTPUT env vars
+// (same pattern as dark-factory).
 func (r *dockerReviewer) Review(
 	ctx context.Context,
 	worktreePath string,
@@ -58,12 +59,9 @@ func (r *dockerReviewer) Review(
 		return "", fmt.Errorf("close prompt file: %w", err)
 	}
 
-	// Build docker command
-	// Uses entrypoint.sh which reads YOLO_PROMPT_FILE, sets up firewall/proxy,
-	// and runs claude. Output is stream-json piped through stream-formatter.py.
-	// The formatter extracts text content from assistant messages and prints the
-	// final result after "--- DONE ---".
-	// #nosec G204 -- paths from context, containerImage from config
+	// Build docker command using default entrypoint with env vars.
+	// YOLO_OUTPUT=print makes entrypoint use claude --print for raw text output.
+	// #nosec G204 -- paths from context, containerImage from config, model validated by claude CLI
 	cmd := exec.CommandContext(
 		ctx,
 		"docker",
@@ -71,9 +69,9 @@ func (r *dockerReviewer) Review(
 		"--rm",
 		"--cap-add=NET_ADMIN",
 		"--cap-add=NET_RAW",
-		"-w", "/workspace",
 		"-e", "YOLO_PROMPT_FILE=/tmp/prompt.md",
 		"-e", "YOLO_MODEL="+model,
+		"-e", "YOLO_OUTPUT=print",
 		"-v", promptFile.Name()+":/tmp/prompt.md:ro",
 		"-v", fmt.Sprintf("%s:/workspace", worktreePath),
 		"-v", fmt.Sprintf("%s/.claude-yolo:/home/node/.claude", home),
@@ -89,19 +87,5 @@ func (r *dockerReviewer) Review(
 		return "", fmt.Errorf("claude review failed: %s", strings.TrimSpace(stderr.String()))
 	}
 
-	// Extract the final result from stream-formatter output.
-	// The formatter prints "--- DONE ---\n<result>" at the end.
-	output := stdout.String()
-	return extractResult(output), nil
-}
-
-// extractResult extracts the final result text from stream-formatter output.
-// The formatter outputs "--- DONE ---\n<result>" when claude finishes.
-// If no marker found, returns the full output as fallback.
-func extractResult(output string) string {
-	const marker = "\n--- DONE ---\n"
-	if idx := strings.LastIndex(output, marker); idx != -1 {
-		return strings.TrimSpace(output[idx+len(marker):])
-	}
-	return strings.TrimSpace(output)
+	return strings.TrimSpace(stdout.String()), nil
 }

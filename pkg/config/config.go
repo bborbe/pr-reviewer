@@ -40,7 +40,7 @@ const DefaultGitHubToken = "PR_REVIEWER_GITHUB_TOKEN"
 const DefaultBitbucketToken = "BITBUCKET_TOKEN"
 
 // DefaultContainerImage is the default Docker image for sandboxed reviews.
-const DefaultContainerImage = "docker.io/bborbe/claude-yolo:v0.0.9"
+const DefaultContainerImage = "docker.io/bborbe/claude-yolo:v0.2.0"
 
 // Config holds the pr-reviewer configuration.
 type Config struct {
