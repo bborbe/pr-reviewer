@@ -2,7 +2,7 @@
 tags:
   - dark-factory
   - spec
-status: draft
+status: approved
 ---
 Tags: [[Dark Factory - Spec Writing Guide]]
 
@@ -73,11 +73,11 @@ Future work (not this spec): run the review inside the claude-yolo Docker contai
 make precommit
 ```
 
-## Open Questions
+## Resolved Questions
 
-- What is the exact Claude CLI flag to specify config dir? `--claude-config-dir`? `CLAUDE_CONFIG_DIR` env var?
-- Should the yolo `/pr-review` reference docs from `~/.claude-yolo/docs/` or are agents self-contained enough?
-- Should agents be copied verbatim from host or adapted for container paths?
+- **Config dir flag**: No `--claude-config-dir` exists. Dark-factory uses Docker volume mount: `-v ~/.claude-yolo:/home/node/.claude`. pr-reviewer should do the same — run Claude inside the `claude-yolo` container.
+- **Executor pattern**: Reuse dark-factory's Docker executor approach (`docker run --rm -v ... claude-yolo`).
+- **Agents**: Copy from host `~/.claude/agents/` to `~/.claude-yolo/agents/`, adapting any host-specific paths to container paths (`/home/node/.claude/docs/`).
 
 ## Do-Nothing Option
 
