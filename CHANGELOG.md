@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.5.2
+
+- Fix verdict parser treating markdown horizontal rules (---) as must-fix content
+
 ## v0.5.1
 
 - Fix Bitbucket needs-work verdict by replacing broken /profile endpoint with configurable username

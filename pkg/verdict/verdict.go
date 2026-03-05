@@ -98,8 +98,8 @@ func checkMustFixContent(lines []string, mustFixIndex int) bool {
 			break
 		}
 
-		// Skip empty lines
-		if line == "" {
+		// Skip empty lines and horizontal rules
+		if line == "" || isHorizontalRule(line) {
 			continue
 		}
 
@@ -114,6 +114,20 @@ func checkMustFixContent(lines []string, mustFixIndex int) bool {
 	}
 
 	return hasNonEmptyContent
+}
+
+// isHorizontalRule checks if a line is a markdown horizontal rule (---, ***, ___).
+func isHorizontalRule(line string) bool {
+	cleaned := strings.TrimSpace(line)
+	if len(cleaned) < 3 {
+		return false
+	}
+	for _, ch := range cleaned {
+		if ch != '-' && ch != '*' && ch != '_' {
+			return false
+		}
+	}
+	return true
 }
 
 // isNoneIndicator checks if a line indicates "no issues" (e.g., "None", "*None*", "None identified.")

@@ -287,6 +287,34 @@ No issues found.
 		})
 	})
 
+	Context("review with Must Fix None separated by horizontal rules", func() {
+		BeforeEach(func() {
+			reviewText = `### Must Fix
+
+None.
+
+---
+
+### Should Fix
+
+None.
+
+---
+
+### Nice to Have
+
+- Minor style improvement`
+		})
+
+		It("returns VerdictApprove", func() {
+			Expect(result.Verdict).To(Equal(verdict.VerdictApprove))
+		})
+
+		It("returns reason 'no must-fix items'", func() {
+			Expect(result.Reason).To(Equal("no must-fix items"))
+		})
+	})
+
 	Context("complex review with multiple sections", func() {
 		BeforeEach(func() {
 			reviewText = `# Code Review
