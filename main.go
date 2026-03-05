@@ -159,7 +159,15 @@ func runGitHub(
 	}
 
 	// Submit review or post comment
-	return submitGitHubReview(ctx, commentOnly, result, ghClient, prInfo, reviewText)
+	return submitGitHubReview(
+		ctx,
+		commentOnly,
+		cfg.AutoApprove,
+		result,
+		ghClient,
+		prInfo,
+		reviewText,
+	)
 }
 
 // runBitbucket handles the Bitbucket Server PR review workflow.
@@ -239,6 +247,7 @@ func runBitbucket(
 	return submitBitbucketReview(
 		ctx,
 		commentOnly,
+		cfg.AutoApprove,
 		result,
 		bbClient,
 		prInfo,
@@ -325,6 +334,7 @@ func runReview(
 func submitGitHubReview(
 	ctx context.Context,
 	commentOnly bool,
+	autoApprove bool,
 	result verdict.Result,
 	ghClient github.Client,
 	prInfo *prurl.PRInfo,
@@ -332,39 +342,43 @@ func submitGitHubReview(
 ) error {
 	// --comment-only flag overrides verdict
 	if commentOnly {
-		logAlways("posting comment...")
-		if err := ghClient.PostComment(
-			ctx,
-			prInfo.Owner,
-			prInfo.Repo,
-			prInfo.Number,
-			reviewText,
-		); err != nil {
-			return errors.Wrap(ctx, err, "post comment failed")
-		}
-		logAlways("done")
-		return nil
+		return postGitHubComment(ctx, ghClient, prInfo, reviewText)
 	}
 
-	// Submit structured review for approve/request-changes
-	if result.Verdict == verdict.VerdictApprove ||
-		result.Verdict == verdict.VerdictRequestChanges {
-		logAlways("submitting review: %s...", result.Verdict)
-		if err := ghClient.SubmitReview(
+	// Handle approve verdict based on autoApprove setting
+	if result.Verdict == verdict.VerdictApprove {
+		return handleGitHubApprove(
 			ctx,
-			prInfo.Owner,
-			prInfo.Repo,
-			prInfo.Number,
+			autoApprove,
+			result,
+			ghClient,
+			prInfo,
 			reviewText,
-			result.Verdict,
-		); err != nil {
-			return errors.Wrap(ctx, err, "submit review failed")
-		}
-		logAlways("done")
-		return nil
+		)
+	}
+
+	// Submit structured review for request-changes
+	if result.Verdict == verdict.VerdictRequestChanges {
+		return submitGitHubStructuredReview(
+			ctx,
+			result,
+			ghClient,
+			prInfo,
+			reviewText,
+		)
 	}
 
 	// Fallback to plain comment for VerdictComment
+	return postGitHubComment(ctx, ghClient, prInfo, reviewText)
+}
+
+// postGitHubComment posts a plain comment to a GitHub PR.
+func postGitHubComment(
+	ctx context.Context,
+	ghClient github.Client,
+	prInfo *prurl.PRInfo,
+	reviewText string,
+) error {
 	logAlways("posting comment...")
 	if err := ghClient.PostComment(
 		ctx,
@@ -379,10 +393,50 @@ func submitGitHubReview(
 	return nil
 }
 
+// handleGitHubApprove handles the approve verdict based on autoApprove setting.
+func handleGitHubApprove(
+	ctx context.Context,
+	autoApprove bool,
+	result verdict.Result,
+	ghClient github.Client,
+	prInfo *prurl.PRInfo,
+	reviewText string,
+) error {
+	if !autoApprove {
+		logAlways("skipping auto-approve (disabled in config)")
+		return postGitHubComment(ctx, ghClient, prInfo, reviewText)
+	}
+	return submitGitHubStructuredReview(ctx, result, ghClient, prInfo, reviewText)
+}
+
+// submitGitHubStructuredReview submits a structured review (approve/request-changes).
+func submitGitHubStructuredReview(
+	ctx context.Context,
+	result verdict.Result,
+	ghClient github.Client,
+	prInfo *prurl.PRInfo,
+	reviewText string,
+) error {
+	logAlways("submitting review: %s...", result.Verdict)
+	if err := ghClient.SubmitReview(
+		ctx,
+		prInfo.Owner,
+		prInfo.Repo,
+		prInfo.Number,
+		reviewText,
+		result.Verdict,
+	); err != nil {
+		return errors.Wrap(ctx, err, "submit review failed")
+	}
+	logAlways("done")
+	return nil
+}
+
 // submitBitbucketReview submits the review to Bitbucket with comment and verdict.
 func submitBitbucketReview(
 	ctx context.Context,
 	commentOnly bool,
+	autoApprove bool,
 	result verdict.Result,
 	bbClient bitbucket.Client,
 	prInfo *prurl.PRInfo,
@@ -410,6 +464,11 @@ func submitBitbucketReview(
 
 	// Submit verdict for approve/request-changes
 	if result.Verdict == verdict.VerdictApprove {
+		if !autoApprove {
+			logAlways("skipping auto-approve (disabled in config)")
+			logAlways("done")
+			return nil
+		}
 		logAlways("approving PR...")
 		if err := bbClient.Approve(
 			ctx,

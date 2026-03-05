@@ -49,6 +49,7 @@ type Config struct {
 	Model          string          `yaml:"model"`
 	UseDocker      bool            `yaml:"useDocker"`
 	ContainerImage string          `yaml:"containerImage"`
+	AutoApprove    bool            `yaml:"autoApprove"`
 	Repos          []RepoConfig    `yaml:"repos"`
 }
 

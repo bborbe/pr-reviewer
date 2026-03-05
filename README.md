@@ -48,6 +48,7 @@ repos:
 github:
   token: ${PR_REVIEWER_GITHUB_TOKEN}  # optional: env var reference (this is also the default)
 model: sonnet             # optional: claude model (default: sonnet)
+autoApprove: false        # optional: enable auto-approve on clean reviews (default: false)
 repos:
   - url: https://github.com/bborbe/teamvault-docker
     path: ~/Documents/workspaces/teamvault-docker
@@ -61,6 +62,7 @@ repos:
 
 - `github.token`: Optional GitHub token. If not specified or empty after env var resolution, uses `gh` CLI authentication.
 - `model`: Claude model to use (e.g., `sonnet`, `opus`, `haiku`). Defaults to `sonnet`.
+- `autoApprove`: Enable automatic PR approval when review verdict is "approve". Defaults to `false` (safe default - only posts comments). When `true`, PRs will be auto-approved. Request-changes verdicts are always submitted regardless of this setting.
 - `repos[].reviewCommand`: Command passed to Claude Code CLI. Defaults to `/code-review`.
 
 ## How it works

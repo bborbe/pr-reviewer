@@ -420,6 +420,68 @@ repos:
 				).To(ContainSubstring("invalid repo entry: url and path required"))
 			})
 		})
+
+		Context("with autoApprove not set", func() {
+			BeforeEach(func() {
+				configPath = filepath.Join(tmpDir, "config.yaml")
+				yamlWithoutAutoApprove := `repos:
+  - url: https://github.com/bborbe/pr-reviewer
+    path: /home/user/pr-reviewer
+`
+				err := os.WriteFile(configPath, []byte(yamlWithoutAutoApprove), 0600)
+				Expect(err).To(BeNil())
+			})
+
+			It("returns no error", func() {
+				Expect(err).To(BeNil())
+			})
+
+			It("AutoApprove defaults to false", func() {
+				Expect(cfg.AutoApprove).To(BeFalse())
+			})
+		})
+
+		Context("with autoApprove set to true", func() {
+			BeforeEach(func() {
+				configPath = filepath.Join(tmpDir, "config.yaml")
+				yamlWithAutoApprove := `autoApprove: true
+repos:
+  - url: https://github.com/bborbe/pr-reviewer
+    path: /home/user/pr-reviewer
+`
+				err := os.WriteFile(configPath, []byte(yamlWithAutoApprove), 0600)
+				Expect(err).To(BeNil())
+			})
+
+			It("returns no error", func() {
+				Expect(err).To(BeNil())
+			})
+
+			It("AutoApprove is true", func() {
+				Expect(cfg.AutoApprove).To(BeTrue())
+			})
+		})
+
+		Context("with autoApprove set to false", func() {
+			BeforeEach(func() {
+				configPath = filepath.Join(tmpDir, "config.yaml")
+				yamlWithAutoApproveFalse := `autoApprove: false
+repos:
+  - url: https://github.com/bborbe/pr-reviewer
+    path: /home/user/pr-reviewer
+`
+				err := os.WriteFile(configPath, []byte(yamlWithAutoApproveFalse), 0600)
+				Expect(err).To(BeNil())
+			})
+
+			It("returns no error", func() {
+				Expect(err).To(BeNil())
+			})
+
+			It("AutoApprove is false", func() {
+				Expect(cfg.AutoApprove).To(BeFalse())
+			})
+		})
 	})
 
 	Describe("FindRepoPath", func() {
