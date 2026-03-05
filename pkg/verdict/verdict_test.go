@@ -5,6 +5,8 @@
 package verdict_test
 
 import (
+	"strings"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -348,6 +350,261 @@ Overall good work!`
 
 		It("returns reason 'no must-fix items'", func() {
 			Expect(result.Reason).To(Equal("no must-fix items"))
+		})
+	})
+
+	Context("JSON verdict on bare line", func() {
+		BeforeEach(func() {
+			reviewText = `# Code Review
+
+Some review content here.
+
+{"verdict": "approve", "reason": "all checks passed"}`
+		})
+
+		It("returns VerdictApprove from JSON", func() {
+			Expect(result.Verdict).To(Equal(verdict.VerdictApprove))
+		})
+
+		It("returns reason from JSON", func() {
+			Expect(result.Reason).To(Equal("all checks passed"))
+		})
+	})
+
+	Context("JSON verdict inside code fence", func() {
+		BeforeEach(func() {
+			reviewText = `# Code Review
+
+Some review content here.
+
+` + "```json" + `
+{"verdict": "request-changes", "reason": "critical security issues"}
+` + "```" + ``
+		})
+
+		It("returns VerdictRequestChanges from JSON", func() {
+			Expect(result.Verdict).To(Equal(verdict.VerdictRequestChanges))
+		})
+
+		It("returns reason from JSON", func() {
+			Expect(result.Reason).To(Equal("critical security issues"))
+		})
+	})
+
+	Context("JSON verdict with extra whitespace", func() {
+		BeforeEach(func() {
+			reviewText = `# Code Review
+
+Some content.
+
+   {"verdict": "comment", "reason": "informational only"}   `
+		})
+
+		It("returns VerdictComment from JSON", func() {
+			Expect(result.Verdict).To(Equal(verdict.VerdictComment))
+		})
+
+		It("returns reason from JSON", func() {
+			Expect(result.Reason).To(Equal("informational only"))
+		})
+	})
+
+	Context("invalid JSON falls back to heuristic", func() {
+		BeforeEach(func() {
+			reviewText = `### Must Fix
+
+- Security issue
+
+{"verdict": "approve", "reason": invalid json}`
+		})
+
+		It("returns VerdictRequestChanges from heuristic", func() {
+			Expect(result.Verdict).To(Equal(verdict.VerdictRequestChanges))
+		})
+
+		It("returns reason from heuristic", func() {
+			Expect(result.Reason).To(Equal("must-fix items found"))
+		})
+	})
+
+	Context("missing verdict field falls back to heuristic", func() {
+		BeforeEach(func() {
+			reviewText = `### Should Fix
+
+- Add tests
+
+{"reason": "just a reason"}`
+		})
+
+		It("returns VerdictApprove from heuristic", func() {
+			Expect(result.Verdict).To(Equal(verdict.VerdictApprove))
+		})
+
+		It("returns reason from heuristic", func() {
+			Expect(result.Reason).To(Equal("no must-fix section"))
+		})
+	})
+
+	Context("unknown verdict value falls back to heuristic", func() {
+		BeforeEach(func() {
+			reviewText = `### Nice to Have
+
+- Refactor code
+
+{"verdict": "unknown-verdict", "reason": "some reason"}`
+		})
+
+		It("returns VerdictApprove from heuristic", func() {
+			Expect(result.Verdict).To(Equal(verdict.VerdictApprove))
+		})
+
+		It("returns reason from heuristic", func() {
+			Expect(result.Reason).To(Equal("no must-fix section"))
+		})
+	})
+
+	Context("no JSON at all uses heuristic", func() {
+		BeforeEach(func() {
+			reviewText = `### Must Fix
+
+None
+
+### Should Fix
+
+- Add error handling`
+		})
+
+		It("returns VerdictApprove from heuristic", func() {
+			Expect(result.Verdict).To(Equal(verdict.VerdictApprove))
+		})
+
+		It("returns reason from heuristic", func() {
+			Expect(result.Reason).To(Equal("no must-fix items"))
+		})
+	})
+
+	Context("JSON verdict in middle of review is ignored", func() {
+		BeforeEach(func() {
+			// Build a review with >50 lines so JSON in middle is outside the search window
+			var lines []string
+			lines = append(lines, "# Code Review")
+			lines = append(lines, "")
+			lines = append(lines, `{"verdict": "approve", "reason": "this should be ignored"}`)
+			lines = append(lines, "")
+
+			// Add 60 more lines to push JSON out of the last-50 window
+			for i := 0; i < 60; i++ {
+				lines = append(lines, "Some review content line.")
+			}
+
+			lines = append(lines, "### Must Fix")
+			lines = append(lines, "- Critical issue")
+
+			reviewText = strings.Join(lines, "\n")
+		})
+
+		It("ignores JSON in middle and uses heuristic", func() {
+			Expect(result.Verdict).To(Equal(verdict.VerdictRequestChanges))
+		})
+
+		It("returns reason from heuristic", func() {
+			Expect(result.Reason).To(Equal("must-fix items found"))
+		})
+	})
+})
+
+var _ = Describe("StripJSONVerdict", func() {
+	var (
+		reviewText string
+		stripped   string
+	)
+
+	JustBeforeEach(func() {
+		stripped = verdict.StripJSONVerdict(reviewText)
+	})
+
+	Context("removes JSON verdict on bare line", func() {
+		BeforeEach(func() {
+			reviewText = `# Code Review
+
+Some review content here.
+
+{"verdict": "approve", "reason": "all checks passed"}`
+		})
+
+		It("removes the JSON line", func() {
+			Expect(stripped).NotTo(ContainSubstring(`"verdict"`))
+			Expect(stripped).To(ContainSubstring("Some review content here."))
+		})
+	})
+
+	Context("removes JSON verdict inside code fence", func() {
+		BeforeEach(func() {
+			reviewText = `# Code Review
+
+Some review content.
+
+` + "```json" + `
+{"verdict": "approve", "reason": "looks good"}
+` + "```" + `
+
+End of review.`
+		})
+
+		It("removes the JSON and code fence", func() {
+			Expect(stripped).NotTo(ContainSubstring(`"verdict"`))
+			Expect(stripped).NotTo(ContainSubstring("```json"))
+			Expect(stripped).To(ContainSubstring("Some review content."))
+			Expect(stripped).To(ContainSubstring("End of review."))
+		})
+	})
+
+	Context("preserves text when no JSON found", func() {
+		BeforeEach(func() {
+			reviewText = `# Code Review
+
+Some review content without JSON verdict.`
+		})
+
+		It("returns unchanged text", func() {
+			Expect(stripped).To(Equal(reviewText))
+		})
+	})
+
+	Context("handles multiple trailing newlines", func() {
+		BeforeEach(func() {
+			reviewText = `# Code Review
+
+Some content.
+
+{"verdict": "approve", "reason": "good"}
+
+
+`
+		})
+
+		It("collapses trailing blank lines", func() {
+			Expect(stripped).NotTo(ContainSubstring(`"verdict"`))
+			Expect(stripped).NotTo(HaveSuffix("\n\n\n"))
+			Expect(stripped).To(ContainSubstring("Some content."))
+		})
+	})
+
+	Context("preserves other JSON in review", func() {
+		BeforeEach(func() {
+			reviewText = `# Code Review
+
+Here's an example:
+` + "```json" + `
+{"config": "value"}
+` + "```" + `
+
+{"verdict": "approve", "reason": "ok"}`
+		})
+
+		It("only removes verdict JSON", func() {
+			Expect(stripped).NotTo(ContainSubstring(`"verdict"`))
+			Expect(stripped).To(ContainSubstring(`"config"`))
 		})
 	})
 })

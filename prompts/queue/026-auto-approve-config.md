@@ -1,5 +1,5 @@
 ---
-status: approved
+status: queued
 ---
 <objective>
 Add configurable auto-approve behavior. By default, pr-reviewer should only post comments and mark needs-work on issues — but NOT auto-approve. Auto-approve should be opt-in via config.

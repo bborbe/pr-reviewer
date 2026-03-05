@@ -1,5 +1,5 @@
 ---
-status: approved
+status: queued
 ---
 <objective>
 Use StripJSONVerdict to remove the JSON verdict block from review text before posting it as a PR comment.

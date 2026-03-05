@@ -1,5 +1,5 @@
 ---
-status: approved
+status: queued
 ---
 <objective>
 Add a Docker-based review executor that runs Claude inside the claude-yolo container, matching dark-factory's execution pattern.
