@@ -8,6 +8,14 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.4.0
+
+- Add Bitbucket Server support: parse PR URLs, fetch branch, post comments via REST API
+- Add platform-agnostic URL parser (pkg/prurl) supporting GitHub and Bitbucket Server
+- Add Bitbucket API client (pkg/bitbucket) with Bearer token auth and error handling
+- Add Bitbucket token configuration with BITBUCKET_TOKEN env var default
+- Route GitHub and Bitbucket URLs to respective clients in main workflow
+
 ## v0.3.0
 
 - Wire verdict-based review submission into main workflow
