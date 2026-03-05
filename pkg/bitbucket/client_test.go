@@ -1,0 +1,324 @@
+// Copyright (c) 2025 Benjamin Borbe All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+package bitbucket_test
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+
+	"github.com/bborbe/pr-reviewer/pkg/bitbucket"
+)
+
+var _ = Describe("Client", func() {
+	var (
+		ctx    context.Context
+		client bitbucket.Client
+		token  string
+	)
+
+	BeforeEach(func() {
+		ctx = context.Background()
+		token = "test-token-12345"
+	})
+
+	Context("NewClient", func() {
+		It("creates a non-nil client with token", func() {
+			client = bitbucket.NewClient(token)
+			Expect(client).NotTo(BeNil())
+		})
+
+		It("implements Client interface", func() {
+			var _ bitbucket.Client = bitbucket.NewClient(token)
+		})
+	})
+
+	Context("GetPRBranch", func() {
+		var (
+			server *httptest.Server
+			branch string
+			err    error
+		)
+
+		JustBeforeEach(func() {
+			client = bitbucket.NewClient(token)
+			// Use server.URL directly (includes http:// scheme for testing)
+			branch, err = client.GetPRBranch(ctx, server.URL, "PROJ", "repo", 123)
+		})
+
+		AfterEach(func() {
+			if server != nil {
+				server.Close()
+			}
+		})
+
+		Context("successful response", func() {
+			BeforeEach(func() {
+				server = httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						Expect(r.Method).To(Equal(http.MethodGet))
+						Expect(
+							r.URL.Path,
+						).To(Equal("/rest/api/1.0/projects/PROJ/repos/repo/pull-requests/123"))
+						Expect(r.Header.Get("Authorization")).To(Equal("Bearer " + token))
+
+						response := map[string]interface{}{
+							"fromRef": map[string]interface{}{
+								"displayId": "feature/my-branch",
+							},
+						}
+						w.Header().Set("Content-Type", "application/json")
+						w.WriteHeader(http.StatusOK)
+						_ = json.NewEncoder(w).Encode(response)
+					}),
+				)
+			})
+
+			It("returns the branch name", func() {
+				Expect(err).To(BeNil())
+				Expect(branch).To(Equal("feature/my-branch"))
+			})
+		})
+
+		Context("401 Unauthorized", func() {
+			BeforeEach(func() {
+				server = httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusUnauthorized)
+					}),
+				)
+			})
+
+			It("returns authentication error", func() {
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("authentication failed"))
+				Expect(err.Error()).NotTo(ContainSubstring(token))
+			})
+		})
+
+		Context("403 Forbidden", func() {
+			BeforeEach(func() {
+				server = httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusForbidden)
+					}),
+				)
+			})
+
+			It("returns permission error", func() {
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("insufficient permissions"))
+				Expect(err.Error()).NotTo(ContainSubstring(token))
+			})
+		})
+
+		Context("404 Not Found", func() {
+			BeforeEach(func() {
+				server = httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusNotFound)
+					}),
+				)
+			})
+
+			It("returns not found error", func() {
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("PR not found"))
+				Expect(
+					err.Error(),
+				).To(ContainSubstring("projects/PROJ/repos/repo/pull-requests/123"))
+				Expect(err.Error()).NotTo(ContainSubstring(token))
+			})
+		})
+
+		Context("empty branch in response", func() {
+			BeforeEach(func() {
+				server = httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						response := map[string]interface{}{
+							"fromRef": map[string]interface{}{
+								"displayId": "",
+							},
+						}
+						w.Header().Set("Content-Type", "application/json")
+						w.WriteHeader(http.StatusOK)
+						_ = json.NewEncoder(w).Encode(response)
+					}),
+				)
+			})
+
+			It("returns error", func() {
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("missing source branch"))
+			})
+		})
+
+		Context("invalid JSON response", func() {
+			BeforeEach(func() {
+				server = httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.Header().Set("Content-Type", "application/json")
+						w.WriteHeader(http.StatusOK)
+						_, _ = w.Write([]byte("invalid json"))
+					}),
+				)
+			})
+
+			It("returns parse error", func() {
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("failed to parse"))
+			})
+		})
+
+		Context("context cancellation", func() {
+			It("respects cancelled context", func() {
+				cancelCtx, cancel := context.WithCancel(ctx)
+				cancel() // Cancel immediately
+
+				// Create server after cancelling to ensure context is already cancelled
+				testServer := httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusOK)
+					}),
+				)
+				defer testServer.Close()
+
+				client := bitbucket.NewClient(token)
+				_, err := client.GetPRBranch(cancelCtx, testServer.URL, "PROJ", "repo", 123)
+
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("context canceled"))
+			})
+		})
+	})
+
+	Context("PostComment", func() {
+		var (
+			server *httptest.Server
+			err    error
+		)
+
+		JustBeforeEach(func() {
+			client = bitbucket.NewClient(token)
+			// Use server.URL directly (includes http:// scheme for testing)
+			err = client.PostComment(ctx, server.URL, "PROJ", "repo", 123, "Test comment")
+		})
+
+		AfterEach(func() {
+			if server != nil {
+				server.Close()
+			}
+		})
+
+		Context("successful response", func() {
+			BeforeEach(func() {
+				server = httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						Expect(r.Method).To(Equal(http.MethodPost))
+						Expect(
+							r.URL.Path,
+						).To(Equal("/rest/api/1.0/projects/PROJ/repos/repo/pull-requests/123/comments"))
+						Expect(r.Header.Get("Authorization")).To(Equal("Bearer " + token))
+						Expect(r.Header.Get("Content-Type")).To(Equal("application/json"))
+
+						var body map[string]string
+						err := json.NewDecoder(r.Body).Decode(&body)
+						Expect(err).To(BeNil())
+						Expect(body["text"]).To(Equal("Test comment"))
+
+						w.WriteHeader(http.StatusCreated)
+					}),
+				)
+			})
+
+			It("posts comment successfully", func() {
+				Expect(err).To(BeNil())
+			})
+		})
+
+		Context("401 Unauthorized", func() {
+			BeforeEach(func() {
+				server = httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusUnauthorized)
+					}),
+				)
+			})
+
+			It("returns authentication error", func() {
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("authentication failed"))
+				Expect(err.Error()).NotTo(ContainSubstring(token))
+			})
+		})
+
+		Context("403 Forbidden", func() {
+			BeforeEach(func() {
+				server = httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusForbidden)
+					}),
+				)
+			})
+
+			It("returns permission error", func() {
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("insufficient permissions"))
+				Expect(err.Error()).NotTo(ContainSubstring(token))
+			})
+		})
+
+		Context("404 Not Found", func() {
+			BeforeEach(func() {
+				server = httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusNotFound)
+					}),
+				)
+			})
+
+			It("returns not found error", func() {
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("PR not found"))
+				Expect(
+					err.Error(),
+				).To(ContainSubstring("projects/PROJ/repos/repo/pull-requests/123"))
+				Expect(err.Error()).NotTo(ContainSubstring(token))
+			})
+		})
+
+		Context("context cancellation", func() {
+			It("respects cancelled context", func() {
+				cancelCtx, cancel := context.WithCancel(ctx)
+				cancel() // Cancel immediately
+
+				// Create server after cancelling to ensure context is already cancelled
+				testServer := httptest.NewServer(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusOK)
+					}),
+				)
+				defer testServer.Close()
+
+				client := bitbucket.NewClient(token)
+				err := client.PostComment(
+					cancelCtx,
+					testServer.URL,
+					"PROJ",
+					"repo",
+					123,
+					"Test comment",
+				)
+
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("context canceled"))
+			})
+		})
+	})
+})

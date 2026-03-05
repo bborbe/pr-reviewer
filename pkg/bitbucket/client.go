@@ -1,0 +1,159 @@
+// Copyright (c) 2025 Benjamin Borbe All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+package bitbucket
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+)
+
+// Client interacts with Bitbucket Server REST API v1.0.
+//
+//counterfeiter:generate -o ../../mocks/bitbucket-client.go --fake-name BitbucketClient . Client
+type Client interface {
+	GetPRBranch(ctx context.Context, host, project, repo string, number int) (string, error)
+	PostComment(ctx context.Context, host, project, repo string, number int, body string) error
+}
+
+// NewClient creates a Client that uses the Bitbucket Server REST API.
+// Token is used for Bearer authentication.
+func NewClient(token string) Client {
+	return &httpClient{
+		token:      token,
+		httpClient: &http.Client{},
+	}
+}
+
+type httpClient struct {
+	token      string
+	httpClient *http.Client
+}
+
+type prResponse struct {
+	FromRef struct {
+		DisplayID string `json:"displayId"`
+	} `json:"fromRef"`
+}
+
+type commentRequest struct {
+	Text string `json:"text"`
+}
+
+// GetPRBranch fetches the source branch name for a pull request.
+func (c *httpClient) GetPRBranch(
+	ctx context.Context,
+	host, project, repo string,
+	number int,
+) (string, error) {
+	url := c.buildURL(host, fmt.Sprintf("/rest/api/1.0/projects/%s/repos/%s/pull-requests/%d",
+		project, repo, number))
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+c.token)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("request failed for %s: %w", host, err)
+	}
+	defer resp.Body.Close()
+
+	if err := checkResponseStatus(resp, host, project, repo, number); err != nil {
+		return "", err
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	var prResp prResponse
+	if err := json.Unmarshal(body, &prResp); err != nil {
+		return "", fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	branch := prResp.FromRef.DisplayID
+	if branch == "" {
+		return "", fmt.Errorf("PR response missing source branch")
+	}
+
+	return branch, nil
+}
+
+// PostComment posts a comment on a pull request.
+func (c *httpClient) PostComment(
+	ctx context.Context,
+	host, project, repo string,
+	number int,
+	body string,
+) error {
+	url := c.buildURL(
+		host,
+		fmt.Sprintf("/rest/api/1.0/projects/%s/repos/%s/pull-requests/%d/comments",
+			project, repo, number),
+	)
+
+	commentReq := commentRequest{Text: body}
+	jsonData, err := json.Marshal(commentReq)
+	if err != nil {
+		return fmt.Errorf("failed to marshal comment: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+c.token)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed for %s: %w", host, err)
+	}
+	defer resp.Body.Close()
+
+	if err := checkResponseStatus(resp, host, project, repo, number); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// buildURL constructs the full URL with scheme detection.
+// If host contains a scheme (http:// or https://), use it as-is.
+// Otherwise, default to https:// for production Bitbucket Server instances.
+func (c *httpClient) buildURL(host, path string) string {
+	if strings.HasPrefix(host, "http://") || strings.HasPrefix(host, "https://") {
+		return host + path
+	}
+	return "https://" + host + path
+}
+
+// checkResponseStatus validates HTTP response status and returns appropriate errors.
+// Token is intentionally excluded from error messages for security.
+func checkResponseStatus(resp *http.Response, host, project, repo string, number int) error {
+	switch resp.StatusCode {
+	case http.StatusOK, http.StatusCreated:
+		return nil
+	case http.StatusUnauthorized:
+		return fmt.Errorf("authentication failed for %s", host)
+	case http.StatusForbidden:
+		return fmt.Errorf("insufficient permissions for %s", host)
+	case http.StatusNotFound:
+		return fmt.Errorf("PR not found: %s/projects/%s/repos/%s/pull-requests/%d",
+			host, project, repo, number)
+	default:
+		return fmt.Errorf("unexpected status %d from %s", resp.StatusCode, host)
+	}
+}

@@ -1,6 +1,6 @@
 ---
 spec: 004-bitbucket-server-support
-status: created
+status: queued
 ---
 <objective>
 Wire Bitbucket Server support into main.go. Route GitHub and Bitbucket URLs to their respective clients while sharing the worktree/review/verdict workflow.
