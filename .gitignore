@@ -5,3 +5,5 @@
 /CLAUDE.md
 /specs/log
 .update-logs
+/.update-logs/
+/.mcp-*
