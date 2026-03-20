@@ -35,7 +35,7 @@ var _ = Describe("Client", func() {
 		})
 
 		It("implements Client interface", func() {
-			var _ github.Client = github.NewGHClient("")
+			var _ github.Client = github.NewGHClient("") //nolint:staticcheck
 		})
 	})
 

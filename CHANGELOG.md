@@ -8,6 +8,13 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.7.2
+
+- upgrade golangci-lint from v1 to v2
+- standardize Makefile: multiline trivy
+- update .golangci.yml to v2 format
+- setup dark-factory config
+
 ## v0.7.1
 
 - go mod update

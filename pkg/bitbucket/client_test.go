@@ -35,7 +35,7 @@ var _ = Describe("Client", func() {
 		})
 
 		It("implements Client interface", func() {
-			var _ bitbucket.Client = bitbucket.NewClient(token)
+			var _ bitbucket.Client = bitbucket.NewClient(token) //nolint:staticcheck
 		})
 	})
 
