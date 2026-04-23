@@ -1,4 +1,4 @@
-DIRS += $(shell find . -mindepth 2 -name Makefile -not -path '*/vendor/*' -not -path '*/node_modules/*' -exec dirname "{}" \; | sed 's|^\./||')
+DIRS += $(shell find */* -maxdepth 0 -name Makefile -exec dirname "{}" \;)
 
 default: precommit
 

@@ -6,15 +6,19 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 
+	agentlib "github.com/bborbe/agent/lib"
 	claudelib "github.com/bborbe/agent/lib/claude"
-	libagent "github.com/bborbe/agent/lib/delivery"
 	"github.com/bborbe/cqrs/base"
 	"github.com/bborbe/errors"
+	libkafka "github.com/bborbe/kafka"
 	libsentry "github.com/bborbe/sentry"
 	"github.com/bborbe/service"
+	libtime "github.com/bborbe/time"
+	"github.com/golang/glog"
 
 	"github.com/bborbe/code-reviewer/agent/pr-reviewer/pkg/factory"
 	"github.com/bborbe/code-reviewer/agent/pr-reviewer/pkg/prompts"
@@ -41,30 +45,31 @@ type application struct {
 	// Allowed tools (comma-separated)
 	AllowedToolsRaw string `required:"false" arg:"allowed-tools" env:"ALLOWED_TOOLS" usage:"Comma-separated list of allowed tools"`
 
+	// Task content from agent pipeline
+	TaskContent string `required:"true" arg:"task-content" env:"TASK_CONTENT" usage:"Raw task markdown from vault"`
+
 	// Environment context passed to prompt (comma-separated KEY=VALUE pairs)
 	EnvContextRaw string `required:"false" arg:"env-context" env:"ENV_CONTEXT" usage:"Comma-separated KEY=VALUE pairs for prompt context"`
 
 	// Environment variables passed to Claude CLI process (comma-separated KEY=VALUE pairs)
 	ClaudeEnvRaw string `required:"false" arg:"claude-env" env:"CLAUDE_ENV" usage:"Comma-separated KEY=VALUE pairs for Claude CLI environment"`
 
-	// Environment
-	Branch base.Branch `required:"true" arg:"branch" env:"BRANCH" usage:"branch" default:"dev"`
+	// Branch for Kafka result delivery
+	Branch base.Branch `required:"true" arg:"branch" env:"BRANCH" usage:"branch"`
 
-	// Task file for local development
-	TaskFilePath string `required:"true" arg:"task-file" env:"TASK_FILE" usage:"Path to the markdown task file"`
+	// Kafka delivery (optional — only active when TASK_ID is set)
+	KafkaBrokers libkafka.Brokers `required:"false" arg:"kafka-brokers" env:"KAFKA_BROKERS" usage:"Comma separated list of Kafka brokers"`
+	TaskID       string           `required:"false" arg:"task-id"       env:"TASK_ID"       usage:"Agent task identifier for publishing results back to task controller"`
 }
 
 func (a *application) Run(ctx context.Context, sentryClient libsentry.Client) error {
-	taskContent, err := os.ReadFile(
-		a.TaskFilePath,
-	) // #nosec G304 -- filePath from trusted CLI input
-	if err != nil {
-		return errors.Wrapf(ctx, err, "read task file: %s", a.TaskFilePath)
-	}
+	glog.V(2).Infof("agent-pr-reviewer started")
 
-	deliverer := claudelib.NewResultDelivererAdapter[claudelib.AgentResult](
-		libagent.NewFileResultDeliverer(libagent.NewFallbackContentGenerator(), a.TaskFilePath),
-	)
+	deliverer, cleanup, err := a.createDeliverer(ctx)
+	if err != nil {
+		return errors.Wrap(ctx, err, "create deliverer")
+	}
+	defer cleanup()
 
 	taskRunner := factory.CreateTaskRunner(
 		a.ClaudeConfigDir,
@@ -77,11 +82,44 @@ func (a *application) Run(ctx context.Context, sentryClient libsentry.Client) er
 		deliverer,
 	)
 
-	result, err := taskRunner.Run(ctx, string(taskContent))
+	result, err := taskRunner.Run(ctx, a.TaskContent)
 	if err != nil {
-		return errors.Wrap(ctx, err, "run task")
+		return claudelib.PrintResult(ctx, claudelib.AgentResult{
+			Status:  claudelib.AgentStatusFailed,
+			Message: fmt.Sprintf("task runner failed: %v", err),
+		})
 	}
-	return libagent.PrintResult(ctx, *result)
+
+	return claudelib.PrintResult(ctx, *result)
+}
+
+func (a *application) createDeliverer(
+	ctx context.Context,
+) (claudelib.ResultDeliverer[claudelib.AgentResult], func(), error) {
+	if a.TaskID != "" {
+		if len(a.KafkaBrokers) == 0 {
+			return nil, nil, errors.Errorf(ctx, "KAFKA_BROKERS must be set when TASK_ID is set")
+		}
+		syncProducer, err := factory.CreateSyncProducer(ctx, a.KafkaBrokers)
+		if err != nil {
+			return nil, nil, errors.Wrap(ctx, err, "create sync producer failed")
+		}
+		taskID := agentlib.TaskIdentifier(a.TaskID)
+		deliverer := factory.CreateKafkaResultDeliverer(
+			syncProducer,
+			a.Branch,
+			taskID,
+			a.TaskContent,
+			libtime.NewCurrentDateTime(),
+		)
+		return deliverer, func() {
+			if err := syncProducer.Close(); err != nil {
+				glog.Warningf("close sync producer failed: %v", err)
+			}
+		}, nil
+	}
+	glog.V(2).Infof("TASK_ID not set, skipping task result publishing")
+	return claudelib.NewNoopResultDeliverer(), func() {}, nil
 }
 
 // parseKeyValuePairs parses "KEY1=VALUE1,KEY2=VALUE2" into a map.

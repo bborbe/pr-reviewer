@@ -17,10 +17,7 @@ import (
 var _ = Describe("Main", func() {
 	It("Compiles", func() {
 		var err error
-		_, err = gexec.Build(
-			"github.com/bborbe/code-reviewer/agent/pr-reviewer/cmd/run-task",
-			"-mod=mod",
-		)
+		_, err = gexec.Build("github.com/bborbe/code-reviewer/agent/pr-reviewer", "-mod=mod")
 		Expect(err).NotTo(HaveOccurred())
 	})
 })
@@ -31,5 +28,5 @@ func TestSuite(t *testing.T) {
 	RegisterFailHandler(Fail)
 	suiteConfig, reporterConfig := GinkgoConfiguration()
 	suiteConfig.Timeout = 60 * time.Second
-	RunSpecs(t, "Run-Task Suite", suiteConfig, reporterConfig)
+	RunSpecs(t, "Main Suite", suiteConfig, reporterConfig)
 }
