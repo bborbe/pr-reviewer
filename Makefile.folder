@@ -65,6 +65,13 @@ buca:
 		(cd $(CURDIR)/$$i && make buca) || exit 1; \
 	done
 
+.PHONY: apply
+apply:
+	@for i in $(DIRS); do \
+		echo "apply $${i}"; \
+		(cd $(CURDIR)/$$i && make apply) || exit 1; \
+	done
+
 gomodtidy:
 	find $$(pwd) -name go.mod -not -path "*/vendor/*" -exec dirname {} + \
 		| sort -u \
