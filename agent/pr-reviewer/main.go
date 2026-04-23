@@ -50,6 +50,9 @@ type application struct {
 
 	// Task content from agent pipeline
 	TaskContent string `required:"true" arg:"task-content" env:"TASK_CONTENT" usage:"Raw task markdown from vault"`
+
+	// GitHub token forwarded to the Claude CLI subprocess as GH_TOKEN for gh auth.
+	GHToken string `required:"false" arg:"gh-token" env:"GH_TOKEN" usage:"GitHub token for gh CLI auth" display:"length"`
 }
 
 func (a *application) Run(ctx context.Context, sentryClient libsentry.Client) error {
@@ -65,6 +68,7 @@ func (a *application) Run(ctx context.Context, sentryClient libsentry.Client) er
 		a.ClaudeConfigDir,
 		a.AgentDir,
 		a.Model,
+		a.GHToken,
 		deliverer,
 	)
 

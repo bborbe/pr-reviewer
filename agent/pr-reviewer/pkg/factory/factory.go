@@ -6,7 +6,6 @@ package factory
 
 import (
 	"context"
-	"os"
 
 	agentlib "github.com/bborbe/agent/lib"
 	claudelib "github.com/bborbe/agent/lib/claude"
@@ -27,46 +26,33 @@ var allowedTools = claudelib.AllowedTools{
 	"Read", "Grep", "Glob", "Bash(git:*)", "Bash(gh:*)", "WebFetch",
 }
 
-// passthroughEnvKeys lists process env vars forwarded into the Claude CLI
-// subprocess. ClaudeRunnerConfig.Env bypasses the allowlist in
-// lib/claude/claude-runner.go, so entries here cross the trust boundary —
-// keep the list minimal. GH_TOKEN authenticates the gh CLI used by the
-// agent to read PRs.
-var passthroughEnvKeys = []string{"GH_TOKEN"}
-
 // CreateTaskRunner wires a complete TaskRunner with ClaudeRunner,
-// prompt assembly, and result delivery.
+// prompt assembly, and result delivery. ghToken is forwarded as GH_TOKEN
+// into the Claude CLI subprocess env (bypasses the lib/claude allowlist)
+// so the gh CLI can authenticate for PR reads.
 func CreateTaskRunner(
 	claudeConfigDir claudelib.ClaudeConfigDir,
 	agentDir claudelib.AgentDir,
 	model claudelib.ClaudeModel,
+	ghToken string,
 	deliverer claudelib.ResultDeliverer[claudelib.AgentResult],
 ) claudelib.TaskRunner[claudelib.AgentResult] {
+	env := map[string]string{}
+	if ghToken != "" {
+		env["GH_TOKEN"] = ghToken
+	}
 	return claudelib.NewTaskRunner[claudelib.AgentResult](
 		claudelib.NewClaudeRunner(claudelib.ClaudeRunnerConfig{
 			ClaudeConfigDir:  claudeConfigDir,
 			AllowedTools:     allowedTools,
 			Model:            model,
 			WorkingDirectory: agentDir,
-			Env:              passthroughEnv(passthroughEnvKeys),
+			Env:              env,
 		}),
 		prompts.BuildInstructions(),
 		nil,
 		deliverer,
 	)
-}
-
-// passthroughEnv reads the given keys from the current process environment
-// and returns a map of those that are set (non-empty). Pure over os.Getenv
-// — testable by manipulating env vars in the test.
-func passthroughEnv(keys []string) map[string]string {
-	out := map[string]string{}
-	for _, k := range keys {
-		if v := os.Getenv(k); v != "" {
-			out[k] = v
-		}
-	}
-	return out
 }
 
 // CreateSyncProducer creates a Kafka sync producer.
