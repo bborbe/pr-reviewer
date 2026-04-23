@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: 'Created agent/pr-reviewer/k8s/ with seven Kubernetes manifests (Config CRD, PVC, Secret, PriorityClass, ResourceQuota dev+prod, Makefile) and added feat entry to CHANGELOG.md under ## Unreleased.'
 container: code-reviewer-031-add-k8s-manifests-pr-reviewer
 dark-factory-version: v0.132.0
 created: "2026-04-23T00:00:00Z"
 queued: "2026-04-23T17:43:52Z"
 started: "2026-04-23T17:44:26Z"
+completed: "2026-04-23T17:45:13Z"
 ---
 
 <summary>
