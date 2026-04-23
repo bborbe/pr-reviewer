@@ -1,7 +1,7 @@
 ---
 status: completed
 summary: Added GetProfile, Approve, and NeedsWork methods to Bitbucket client with comprehensive tests
-container: pr-reviewer-021-bitbucket-review-api
+container: code-reviewer-021-bitbucket-review-api
 dark-factory-version: v0.17.1
 created: "2026-03-05T14:38:07Z"
 queued: "2026-03-05T14:38:07Z"

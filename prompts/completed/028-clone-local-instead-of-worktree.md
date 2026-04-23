@@ -1,7 +1,7 @@
 ---
 status: completed
 summary: Replaced git worktree with git clone --local for Docker volume compatibility
-container: pr-reviewer-028-clone-local-instead-of-worktree
+container: code-reviewer-028-clone-local-instead-of-worktree
 dark-factory-version: dev
 created: "2026-03-05T20:31:34Z"
 queued: "2026-03-05T20:31:34Z"
@@ -23,7 +23,7 @@ Read main.go for how createWorktreeAndFetch is used.
 1. Replace `CreateWorktree` in WorktreeManager with a `CreateClone` method:
    - `CreateClone(ctx, repoPath, branch string, prNumber int) (clonePath string, err error)`
    - First run `git fetch --all --prune` in repoPath (existing Fetch method)
-   - Then run `git clone --local --no-checkout <repoPath> <clonePath>` where clonePath is `/tmp/pr-reviewer-<repoName>-pr-<prNumber>`
+   - Then run `git clone --local --no-checkout <repoPath> <clonePath>` where clonePath is `/tmp/code-reviewer-<repoName>-pr-<prNumber>`
    - Then run `git checkout origin/<branch>` in the clone directory (detached HEAD)
    - Remove stale clone directory if it already exists before cloning
 

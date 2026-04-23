@@ -1,7 +1,7 @@
 ---
 status: completed
 summary: Wired Bitbucket review verdict (approve/needs-work) into main workflow
-container: pr-reviewer-022-wire-bitbucket-verdict
+container: code-reviewer-022-wire-bitbucket-verdict
 dark-factory-version: v0.17.1
 created: "2026-03-05T14:42:33Z"
 queued: "2026-03-05T14:42:33Z"

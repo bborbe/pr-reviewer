@@ -1,7 +1,7 @@
 ---
 status: completed
 summary: Wired verdict parser and SubmitReview into main.go with --comment-only flag
-container: pr-reviewer-016-wire-verdict-into-main
+container: code-reviewer-016-wire-verdict-into-main
 dark-factory-version: v0.16.0
 created: "2026-03-04T23:30:30Z"
 queued: "2026-03-04T23:30:30Z"
@@ -27,7 +27,7 @@ Precondition: Client has PostComment(ctx, owner, repo, number, body) for fallbac
 1. Add `--comment-only` flag to main.go:
    - `flag.Bool("comment-only", false, "skip verdict, post as plain comment")`
    - Pass through to `run()` and `runReviewAndPost()`
-   - Update usage: `"usage: pr-reviewer [-v] [--comment-only] <pr-url>"`
+   - Update usage: `"usage: code-reviewer [-v] [--comment-only] <pr-url>"`
 
 2. Update `runReviewAndPost` to use verdict:
    - After getting reviewText, call `verdict.Parse(reviewText)`
@@ -43,7 +43,7 @@ Precondition: Client has PostComment(ctx, owner, repo, number, body) for fallbac
 </requirements>
 
 <constraints>
-- Import verdict package: `github.com/bborbe/pr-reviewer/pkg/verdict`
+- Import verdict package: `github.com/bborbe/code-reviewer/pkg/verdict`
 - --comment-only takes precedence over any verdict
 - Do NOT change pkg/ packages — only main.go changes
 - Use Ginkgo v2 + Gomega for any new tests

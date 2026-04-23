@@ -2,7 +2,7 @@
 spec: 002-separate-reviewer-identity
 status: completed
 summary: Added separate GitHub reviewer identity via GH_TOKEN configuration
-container: pr-reviewer-008-separate-reviewer-identity
+container: code-reviewer-008-separate-reviewer-identity
 dark-factory-version: v0.14.5
 created: "2026-03-04T19:40:56Z"
 queued: "2026-03-04T19:40:56Z"
@@ -10,7 +10,7 @@ started: "2026-03-04T19:40:56Z"
 completed: "2026-03-04T19:45:59Z"
 ---
 <objective>
-Add separate GitHub reviewer identity via GH_TOKEN so pr-reviewer can review PRs created by dark-factory (same user can't self-review).
+Add separate GitHub reviewer identity via GH_TOKEN so code-reviewer can review PRs created by dark-factory (same user can't self-review).
 </objective>
 
 <context>
@@ -30,7 +30,7 @@ Spec: specs/004-separate-reviewer-identity.md
 
 2. Add config file permission check in `pkg/config/config.go`:
    - After reading the config file, check file permissions with `os.Stat`
-   - If file is world-readable (mode & 0004 != 0), log warning: `"config file is world-readable, consider: chmod 600 ~/.pr-reviewer.yaml"`
+   - If file is world-readable (mode & 0004 != 0), log warning: `"config file is world-readable, consider: chmod 600 ~/.code-reviewer.yaml"`
    - Warning only — do not fail
 
 3. Update `NewGHClient` in `pkg/github/client.go`:

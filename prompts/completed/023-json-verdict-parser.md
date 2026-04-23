@@ -1,7 +1,7 @@
 ---
 status: completed
 summary: Added JSON verdict parser with heuristic fallback and strip functionality
-container: pr-reviewer-023-json-verdict-parser
+container: code-reviewer-023-json-verdict-parser
 dark-factory-version: v0.17.2
 created: "2026-03-05T18:37:07Z"
 queued: "2026-03-05T18:37:07Z"

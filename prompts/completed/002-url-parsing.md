@@ -2,7 +2,7 @@
 spec: 001-mvp-review-single-pr
 status: completed
 summary: Implemented GitHub PR URL parsing with PRInfo struct and ParsePRURL function
-container: pr-reviewer-002-url-parsing
+container: code-reviewer-002-url-parsing
 dark-factory-version: v0.14.5
 created: "2026-03-04T14:03:58Z"
 queued: "2026-03-04T14:03:58Z"

@@ -2,7 +2,7 @@
 spec: 001-mvp-review-single-pr
 status: completed
 summary: Implemented config loading with Loader interface, fileLoader, and comprehensive tests
-container: pr-reviewer-001-config
+container: code-reviewer-001-config
 dark-factory-version: v0.14.5
 created: "2026-03-04T13:56:17Z"
 queued: "2026-03-04T13:56:17Z"
@@ -10,7 +10,7 @@ started: "2026-03-04T13:56:17Z"
 completed: "2026-03-04T14:02:45Z"
 ---
 <objective>
-Implement config loading for pr-reviewer. The tool needs a YAML config file (~/.pr-reviewer.yaml) that maps repo URLs to local checkout paths. This is the foundation — all other prompts depend on config lookup.
+Implement config loading for code-reviewer. The tool needs a YAML config file (~/.code-reviewer.yaml) that maps repo URLs to local checkout paths. This is the foundation — all other prompts depend on config lookup.
 </objective>
 
 <context>
@@ -28,12 +28,12 @@ Spec: specs/001-mvp-review-single-pr.md
    - Implement `fileLoader` struct that reads from a file path
    - Constructor: `NewFileLoader(configPath string) Loader`
    - `Load` reads the YAML file, unmarshals into Config, returns it
-   - Default config path: `~/.pr-reviewer.yaml` (expand `~` to home dir)
+   - Default config path: `~/.code-reviewer.yaml` (expand `~` to home dir)
 
 2. Add method `Config.FindRepoPath(repoURL string) (string, error)`:
    - Looks up repoURL in Repos list (case-insensitive match, normalize trailing slashes)
    - Returns the local path if found
-   - Returns error if not found: `"repo not found in config, add to ~/.pr-reviewer.yaml: <url>"`
+   - Returns error if not found: `"repo not found in config, add to ~/.code-reviewer.yaml: <url>"`
 
 3. Add validation in `Load`:
    - Config file doesn't exist → return error: `"config not found: <path>"`
@@ -97,7 +97,7 @@ var _ = Describe("Config", func() {
 </implementation>
 
 <constraints>
-- Config file location: ~/.pr-reviewer.yaml
+- Config file location: ~/.code-reviewer.yaml
 - Use gopkg.in/yaml.v3 for YAML parsing
 - Package name must be `config_test` (external test package)
 - Never hand-write mocks — use counterfeiter only (go generate)

@@ -3,7 +3,7 @@ HOSTNAME ?= $(shell hostname -s)
 ROOTDIR ?= $(shell git rev-parse --show-toplevel)
 TEAMVAULT ?= ~/.teamvault.json
 VERSION ?= $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
-LDFLAGS := -X github.com/bborbe/pr-reviewer/pkg/version.Version=$(VERSION)
+LDFLAGS := -X github.com/bborbe/code-reviewer/pkg/version.Version=$(VERSION)
 
 .PHONY: default
 default: precommit
@@ -22,7 +22,7 @@ ensure:
 format:
 	find . -type f -name 'go.mod' -not -path './vendor/*' -exec go run -mod=mod github.com/shoenig/go-modtool -w fmt "{}" \;
 	find . -type f -name '*.go' -not -path './vendor/*' -exec gofmt -w "{}" +
-	go run -mod=mod github.com/incu6us/goimports-reviser/v3 -project-name github.com/bborbe/pr-reviewer -format -excludes vendor ./...
+	go run -mod=mod github.com/incu6us/goimports-reviser/v3 -project-name github.com/bborbe/code-reviewer -format -excludes vendor ./...
 	find . -type d -name vendor -prune -o -type f -name '*.go' -print0 | xargs -0 -n 10 go run -mod=mod github.com/segmentio/golines --max-len=100 -w
 
 .PHONY: generate

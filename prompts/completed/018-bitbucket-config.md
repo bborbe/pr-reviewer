@@ -1,7 +1,7 @@
 ---
 status: completed
-summary: Added Bitbucket token configuration to pr-reviewer config following GitHub token pattern
-container: pr-reviewer-018-bitbucket-config
+summary: Added Bitbucket token configuration to code-reviewer config following GitHub token pattern
+container: code-reviewer-018-bitbucket-config
 dark-factory-version: v0.17.0
 created: "2026-03-05T12:34:23Z"
 queued: "2026-03-05T12:34:23Z"
@@ -9,7 +9,7 @@ started: "2026-03-05T12:34:23Z"
 completed: "2026-03-05T12:38:04Z"
 ---
 <objective>
-Add Bitbucket token configuration to pr-reviewer config, following the same env var pattern as the GitHub token.
+Add Bitbucket token configuration to code-reviewer config, following the same env var pattern as the GitHub token.
 </objective>
 
 <context>

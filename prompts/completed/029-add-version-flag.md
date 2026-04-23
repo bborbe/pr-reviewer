@@ -1,6 +1,6 @@
 ---
 status: executed
-container: pr-reviewer-029-add-version-flag
+container: code-reviewer-029-add-version-flag
 dark-factory-version: v0.17.9
 created: "2026-03-05T21:53:46Z"
 queued: "2026-03-05T21:53:46Z"
@@ -20,7 +20,7 @@ Read pkg/version/version.go for the existing Version variable.
 <requirements>
 1. Add `--version` flag to main.go.
 
-2. When `--version` is passed, print `pr-reviewer <version>` to stdout and exit 0.
+2. When `--version` is passed, print `code-reviewer <version>` to stdout and exit 0.
 
 3. Check `--version` before any other logic (before arg validation, config loading, etc.).
 

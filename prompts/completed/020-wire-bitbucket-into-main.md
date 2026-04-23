@@ -1,7 +1,7 @@
 ---
 status: completed
 summary: Wired Bitbucket Server support into main.go with platform routing and shared review workflow
-container: pr-reviewer-020-wire-bitbucket-into-main
+container: code-reviewer-020-wire-bitbucket-into-main
 dark-factory-version: v0.17.0
 created: "2026-03-05T13:13:51Z"
 queued: "2026-03-05T13:13:51Z"

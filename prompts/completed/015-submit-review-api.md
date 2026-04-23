@@ -1,7 +1,7 @@
 ---
 status: completed
 summary: Added SubmitReview method to GitHub Client interface with approve/request-changes support via gh CLI
-container: pr-reviewer-015-submit-review-api
+container: code-reviewer-015-submit-review-api
 dark-factory-version: v0.15.1
 created: "2026-03-04T23:12:24Z"
 queued: "2026-03-04T23:12:24Z"
@@ -44,7 +44,7 @@ Precondition: pkg/verdict defines VerdictApprove and VerdictRequestChanges const
 
 <constraints>
 - Follow existing ghClient patterns exactly (GH_TOKEN, nosec comment, stderr buffer)
-- Import verdict package: `github.com/bborbe/pr-reviewer/pkg/verdict`
+- Import verdict package: `github.com/bborbe/code-reviewer/pkg/verdict`
 - Use Ginkgo v2 + Gomega for tests
 - Run `go generate ./...` after interface change
 </constraints>

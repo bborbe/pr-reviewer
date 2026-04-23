@@ -1,7 +1,7 @@
 ---
 status: completed
 summary: Implemented Bitbucket Server API client with GetPRBranch and PostComment methods using REST API v1.0
-container: pr-reviewer-019-bitbucket-api-client
+container: code-reviewer-019-bitbucket-api-client
 dark-factory-version: v0.17.0
 created: "2026-03-05T13:06:57Z"
 queued: "2026-03-05T13:06:57Z"

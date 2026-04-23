@@ -1,36 +1,36 @@
-# pr-reviewer
+# Code Reviewer
 
 CLI tool to review pull requests using local Claude Code with full project context.
 
 ## What it does
 
-`pr-reviewer` takes a GitHub or Bitbucket Server PR URL, resolves it to a local repository checkout, creates a git worktree, runs Claude Code review in that worktree (picking up CLAUDE.md and project-specific rules), and posts the review back as a PR comment. This enables context-aware reviews that respect your project's coding guidelines and custom review agents.
+`code-reviewer` takes a GitHub or Bitbucket Server PR URL, resolves it to a local repository checkout, creates a git worktree, runs Claude Code review in that worktree (picking up CLAUDE.md and project-specific rules), and posts the review back as a PR comment. This enables context-aware reviews that respect your project's coding guidelines and custom review agents.
 
 ## Installation
 
 ```bash
-go install github.com/bborbe/pr-reviewer@latest
+go install github.com/bborbe/code-reviewer@latest
 ```
 
 ## Usage
 
 ```bash
-pr-reviewer [-v] <pr-url>
+code-reviewer [-v] <pr-url>
 ```
 
 Examples:
 
 ```bash
 # Review a GitHub PR
-pr-reviewer https://github.com/bborbe/teamvault-docker/pull/4
+code-reviewer https://github.com/bborbe/teamvault-docker/pull/4
 
 # Verbose output
-pr-reviewer -v https://github.com/bborbe/pr-reviewer/pull/1
+code-reviewer -v https://github.com/bborbe/code-reviewer/pull/1
 ```
 
 ## Configuration
 
-Create `~/.pr-reviewer.yaml`:
+Create `~/.code-reviewer.yaml`:
 
 **Minimal configuration:**
 
@@ -38,8 +38,8 @@ Create `~/.pr-reviewer.yaml`:
 repos:
   - url: https://github.com/bborbe/teamvault-docker
     path: ~/Documents/workspaces/teamvault-docker
-  - url: https://github.com/bborbe/pr-reviewer
-    path: ~/Documents/workspaces/pr-reviewer
+  - url: https://github.com/bborbe/code-reviewer
+    path: ~/Documents/workspaces/code-reviewer
 ```
 
 **Full configuration with all options:**
@@ -53,8 +53,8 @@ repos:
   - url: https://github.com/bborbe/teamvault-docker
     path: ~/Documents/workspaces/teamvault-docker
     reviewCommand: /code-review  # optional: custom review command (default: /code-review)
-  - url: https://github.com/bborbe/pr-reviewer
-    path: ~/Documents/workspaces/pr-reviewer
+  - url: https://github.com/bborbe/code-reviewer
+    path: ~/Documents/workspaces/code-reviewer
     reviewCommand: /code-review short
 ```
 

@@ -8,6 +8,13 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.8.0
+
+- Rename module path from `github.com/bborbe/pr-reviewer` to `github.com/bborbe/code-reviewer` (repo renamed to cover broader scope)
+- Update all imports, Makefile ldflags, prompts, specs, and docs to new module path
+- Upgrade `github.com/go-git/go-git/v5` from v5.17.2 to v5.18.0 (security fix)
+- Remove stale OSV ignore entries for GO-2026-4923, GHSA-6jwv-w5xf-7j27, GHSA-xmrv-pmrh-hhx2
+
 ## v0.7.4
 
 - Update golangci-lint to v2.11.4

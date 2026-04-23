@@ -2,7 +2,7 @@
 spec: 001-mvp-review-single-pr
 status: completed
 summary: Added configurable Claude model with default sonnet and --model flag always passed to claude CLI
-container: pr-reviewer-010-configurable-model
+container: code-reviewer-010-configurable-model
 dark-factory-version: v0.14.5
 created: "2026-03-04T21:01:26Z"
 queued: "2026-03-04T21:01:26Z"

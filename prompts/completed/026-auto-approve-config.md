@@ -1,7 +1,7 @@
 ---
 status: completed
 summary: Added configurable autoApprove field (defaults false) to Config struct, refactored GitHub/Bitbucket review submission to respect autoApprove setting, added tests, updated README
-container: pr-reviewer-026-auto-approve-config
+container: code-reviewer-026-auto-approve-config
 dark-factory-version: v0.17.2
 created: "2026-03-05T18:54:37Z"
 queued: "2026-03-05T18:54:37Z"
@@ -9,7 +9,7 @@ started: "2026-03-05T18:54:37Z"
 completed: "2026-03-05T19:00:42Z"
 ---
 <objective>
-Add configurable auto-approve behavior. By default, pr-reviewer should only post comments and mark needs-work on issues — but NOT auto-approve. Auto-approve should be opt-in via config.
+Add configurable auto-approve behavior. By default, code-reviewer should only post comments and mark needs-work on issues — but NOT auto-approve. Auto-approve should be opt-in via config.
 </objective>
 
 <context>

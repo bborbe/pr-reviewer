@@ -42,7 +42,7 @@ const DefaultBitbucketToken = "BITBUCKET_TOKEN"
 // DefaultContainerImage is the default Docker image for sandboxed reviews.
 const DefaultContainerImage = "docker.io/bborbe/claude-yolo:v0.2.0"
 
-// Config holds the pr-reviewer configuration.
+// Config holds the code-reviewer configuration.
 type Config struct {
 	GitHub         GitHubConfig    `yaml:"github"`
 	Bitbucket      BitbucketConfig `yaml:"bitbucket"`
@@ -132,7 +132,7 @@ type fileLoader struct {
 func (l *fileLoader) Load(ctx context.Context) (*Config, error) {
 	expandedPath := ExpandHome(l.configPath)
 
-	// #nosec G304 -- path from constructor, typically ~/.pr-reviewer.yaml
+	// #nosec G304 -- path from constructor, typically ~/.code-reviewer.yaml
 	data, err := os.ReadFile(expandedPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -196,7 +196,7 @@ func (c *Config) FindRepoPath(repoURL string) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("repo not found in config, add to ~/.pr-reviewer.yaml: %s", repoURL)
+	return "", fmt.Errorf("repo not found in config, add to ~/.code-reviewer.yaml: %s", repoURL)
 }
 
 // FindRepo looks up the repository information including path and review command.
@@ -214,7 +214,7 @@ func (c *Config) FindRepo(repoURL string) (*RepoInfo, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("repo not found in config, add to ~/.pr-reviewer.yaml: %s", repoURL)
+	return nil, fmt.Errorf("repo not found in config, add to ~/.code-reviewer.yaml: %s", repoURL)
 }
 
 func normalizeURL(url string) string {

@@ -1,7 +1,7 @@
 ---
 status: completed
 summary: Created comprehensive README.md with installation, usage, configuration, and workflow documentation
-container: pr-reviewer-011-add-readme
+container: code-reviewer-011-add-readme
 dark-factory-version: v0.14.5
 created: "2026-03-04T21:18:46Z"
 queued: "2026-03-04T21:18:46Z"
@@ -9,7 +9,7 @@ started: "2026-03-04T21:18:46Z"
 completed: "2026-03-04T21:21:53Z"
 ---
 <objective>
-Add a comprehensive README.md for the pr-reviewer project.
+Add a comprehensive README.md for the code-reviewer project.
 </objective>
 
 <context>
@@ -26,8 +26,8 @@ Precondition: project has no README.md at all.
    - Title and one-line description
    - What it does (2-3 sentences)
    - Installation (`go install`)
-   - Usage: `pr-reviewer [-v] <pr-url>`
-   - Configuration: `~/.pr-reviewer.yaml` with full example showing all fields (github.token, model, repos with url/path/reviewCommand)
+   - Usage: `code-reviewer [-v] <pr-url>`
+   - Configuration: `~/.code-reviewer.yaml` with full example showing all fields (github.token, model, repos with url/path/reviewCommand)
    - How it works (numbered steps: parse URL → find repo → fetch branch → worktree → claude review → post comment → cleanup)
    - Requirements: Go 1.26+, claude CLI, gh CLI
    - License: BSD (link to LICENSE file)

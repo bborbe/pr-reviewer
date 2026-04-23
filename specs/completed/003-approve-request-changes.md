@@ -14,7 +14,7 @@ Spec 001 posts reviews as plain comments. GitHub supports structured review verd
 
 ## Goal
 
-After completion, `pr-reviewer` parses the Claude review output for a pass/fail verdict and submits the review as a structured GitHub review with the appropriate action (approve or request changes) instead of a plain comment.
+After completion, `code-reviewer` parses the Claude review output for a pass/fail verdict and submits the review as a structured GitHub review with the appropriate action (approve or request changes) instead of a plain comment.
 
 ## Non-goals
 

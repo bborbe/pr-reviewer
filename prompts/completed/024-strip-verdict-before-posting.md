@@ -1,7 +1,7 @@
 ---
 status: completed
 summary: Integrated StripJSONVerdict to remove JSON verdict block from PR comments while preserving full review in stdout
-container: pr-reviewer-024-strip-verdict-before-posting
+container: code-reviewer-024-strip-verdict-before-posting
 dark-factory-version: v0.17.2
 created: "2026-03-05T18:44:41Z"
 queued: "2026-03-05T18:44:41Z"

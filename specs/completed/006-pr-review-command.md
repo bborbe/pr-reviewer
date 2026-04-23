@@ -16,7 +16,7 @@ Additionally, `vendor/` directories (Go module vendoring) are included in the re
 
 ## Goal
 
-After completion, `pr-reviewer` uses a `/pr-review` command (or inline prompt) that reviews only the PR diff against the target branch, excluding vendor directories.
+After completion, `code-reviewer` uses a `/pr-review` command (or inline prompt) that reviews only the PR diff against the target branch, excluding vendor directories.
 
 ## Non-goals
 

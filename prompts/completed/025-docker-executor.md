@@ -1,7 +1,7 @@
 ---
 status: completed
 summary: Added Docker-based review executor with configurable container image and volume mounts matching dark-factory pattern
-container: pr-reviewer-025-docker-executor
+container: code-reviewer-025-docker-executor
 dark-factory-version: v0.17.2
 created: "2026-03-05T18:49:04Z"
 queued: "2026-03-05T18:49:04Z"

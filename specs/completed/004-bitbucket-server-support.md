@@ -14,7 +14,7 @@ Spec 001 only supports GitHub. Bitbucket Server PRs at `bitbucket.seibert.tools`
 
 ## Goal
 
-After completion, `pr-reviewer` also accepts Bitbucket Server PR URLs, resolves the repo to a local checkout, runs the same Claude review workflow, and posts the review as a Bitbucket PR comment.
+After completion, `code-reviewer` also accepts Bitbucket Server PR URLs, resolves the repo to a local checkout, runs the same Claude review workflow, and posts the review as a Bitbucket PR comment.
 
 ## Non-goals
 
@@ -43,7 +43,7 @@ After completion, `pr-reviewer` also accepts Bitbucket Server PR URLs, resolves 
 ## Config Addition
 
 ```yaml
-# ~/.pr-reviewer.yaml
+# ~/.code-reviewer.yaml
 repos:
   # Existing GitHub repos still work
   - url: https://github.com/bborbe/teamvault-docker
@@ -94,7 +94,7 @@ Repo URL for config lookup: `https://{host}/projects/{project}/repos/{repo}`
 
 ## Acceptance Criteria
 
-- [ ] `pr-reviewer https://bitbucket.seibert.tools/projects/OC/repos/root/pull-requests/254/overview` produces a review comment
+- [ ] `code-reviewer https://bitbucket.seibert.tools/projects/OC/repos/root/pull-requests/254/overview` produces a review comment
 - [ ] Existing GitHub PRs still work unchanged
 - [ ] Auth failure exits 1 with helpful message
 - [ ] Missing BITBUCKET_TOKEN exits 1 with helpful message

@@ -14,7 +14,7 @@ No tool exists to review pull requests using the local Claude Code CLI with full
 
 ## Goal
 
-After completion, a Go CLI tool `pr-reviewer` accepts a single GitHub PR URL, resolves the repo to a local checkout via config, creates a temporary git worktree for the PR branch, runs a Claude Code review in that worktree, and posts the review as a comment on the PR.
+After completion, a Go CLI tool `code-reviewer` accepts a single GitHub PR URL, resolves the repo to a local checkout via config, creates a temporary git worktree for the PR branch, runs a Claude Code review in that worktree, and posts the review as a comment on the PR.
 
 ## Non-goals
 
@@ -27,7 +27,7 @@ After completion, a Go CLI tool `pr-reviewer` accepts a single GitHub PR URL, re
 
 ## Desired Behavior
 
-1. User runs `pr-reviewer <URL>` where URL is a GitHub PR
+1. User runs `code-reviewer <URL>` where URL is a GitHub PR
 2. Tool parses the URL to extract owner, repo, and PR number
 3. Tool looks up the local repo path from config
 4. Tool fetches the PR metadata (source branch) via GitHub API
@@ -40,7 +40,7 @@ After completion, a Go CLI tool `pr-reviewer` accepts a single GitHub PR URL, re
 
 ## Constraints
 
-- Config file location: `~/.pr-reviewer.yaml`
+- Config file location: `~/.code-reviewer.yaml`
 - Must use `gh` CLI for GitHub operations (already authenticated)
 - Must use `claude` CLI for reviews — not the SDK, not the API directly
 - Must use `git worktree add/remove` — never checkout in the main working tree
@@ -50,12 +50,12 @@ After completion, a Go CLI tool `pr-reviewer` accepts a single GitHub PR URL, re
 ## Config Format
 
 ```yaml
-# ~/.pr-reviewer.yaml
+# ~/.code-reviewer.yaml
 repos:
   - url: https://github.com/bborbe/teamvault-docker
     path: /Users/bborbe/Documents/workspaces/teamvault-docker
-  - url: https://github.com/bborbe/pr-reviewer
-    path: /Users/bborbe/Documents/workspaces/pr-reviewer
+  - url: https://github.com/bborbe/code-reviewer
+    path: /Users/bborbe/Documents/workspaces/code-reviewer
 ```
 
 GitHub auth is handled by `gh` CLI — no token needed in config.
@@ -74,9 +74,9 @@ Repo URL for config lookup: `https://github.com/{owner}/{repo}`
 |---------|-------------------|----------|
 | No arguments | Exit 1 with usage message | User provides URL |
 | Unknown URL format | Exit 1 with "unsupported URL format: <url>" | User fixes URL |
-| Config file doesn't exist | Exit 1 with "config not found: ~/.pr-reviewer.yaml" | User creates config |
+| Config file doesn't exist | Exit 1 with "config not found: ~/.code-reviewer.yaml" | User creates config |
 | Config file invalid YAML | Exit 1 with parse error | User fixes config |
-| Repo not in config | Exit 1 with "repo not found in config, add to ~/.pr-reviewer.yaml: <url>" | User adds mapping |
+| Repo not in config | Exit 1 with "repo not found in config, add to ~/.code-reviewer.yaml: <url>" | User adds mapping |
 | Local path doesn't exist | Exit 1 with "local path not found: <path>" | User clones repo |
 | Local path not a git repo | Exit 1 with "not a git repo: <path>" | User checks path |
 | git fetch fails | Exit 1 with git error | User checks network/auth |
@@ -96,7 +96,7 @@ Repo URL for config lookup: `https://github.com/{owner}/{repo}`
 
 ## Acceptance Criteria
 
-- [ ] `pr-reviewer https://github.com/bborbe/teamvault-docker/pull/4` produces a review comment on the PR
+- [ ] `code-reviewer https://github.com/bborbe/teamvault-docker/pull/4` produces a review comment on the PR
 - [ ] Unknown URL exits 1 with helpful message
 - [ ] Missing config file exits 1 with helpful message
 - [ ] Missing repo in config exits 1 with helpful message

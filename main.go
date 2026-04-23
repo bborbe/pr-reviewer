@@ -14,14 +14,14 @@ import (
 
 	"github.com/bborbe/errors"
 
-	"github.com/bborbe/pr-reviewer/pkg/bitbucket"
-	"github.com/bborbe/pr-reviewer/pkg/config"
-	"github.com/bborbe/pr-reviewer/pkg/git"
-	"github.com/bborbe/pr-reviewer/pkg/github"
-	"github.com/bborbe/pr-reviewer/pkg/prurl"
-	"github.com/bborbe/pr-reviewer/pkg/review"
-	"github.com/bborbe/pr-reviewer/pkg/verdict"
-	"github.com/bborbe/pr-reviewer/pkg/version"
+	"github.com/bborbe/code-reviewer/pkg/bitbucket"
+	"github.com/bborbe/code-reviewer/pkg/config"
+	"github.com/bborbe/code-reviewer/pkg/git"
+	"github.com/bborbe/code-reviewer/pkg/github"
+	"github.com/bborbe/code-reviewer/pkg/prurl"
+	"github.com/bborbe/code-reviewer/pkg/review"
+	"github.com/bborbe/code-reviewer/pkg/verdict"
+	"github.com/bborbe/code-reviewer/pkg/version"
 )
 
 func main() {
@@ -30,13 +30,13 @@ func main() {
 	commentOnly := flag.Bool("comment-only", false, "skip verdict, post as plain comment")
 	versionFlag := flag.Bool("version", false, "print version and exit")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "usage: pr-reviewer [--version] [-v] [--comment-only] <pr-url>\n")
+		fmt.Fprintf(os.Stderr, "usage: code-reviewer [--version] [-v] [--comment-only] <pr-url>\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
 
 	if *versionFlag {
-		fmt.Printf("pr-reviewer %s\n", version.Version)
+		fmt.Printf("code-reviewer %s\n", version.Version)
 		os.Exit(0)
 	}
 
@@ -56,12 +56,12 @@ func main() {
 func run(ctx context.Context, verbose bool, commentOnly bool) error {
 	// Parse args
 	if flag.NArg() < 1 {
-		return fmt.Errorf("usage: pr-reviewer [-v] [--comment-only] <pr-url>")
+		return fmt.Errorf("usage: code-reviewer [-v] [--comment-only] <pr-url>")
 	}
 	rawURL := flag.Arg(0)
 
 	// Log version
-	logVerbose(verbose, "pr-reviewer %s", version.Version)
+	logVerbose(verbose, "code-reviewer %s", version.Version)
 
 	// Parse PR URL
 	logVerbose(verbose, "parsing URL: %s", rawURL)
@@ -71,7 +71,7 @@ func run(ctx context.Context, verbose bool, commentOnly bool) error {
 	}
 
 	// Load config
-	configPath := "~/.pr-reviewer.yaml"
+	configPath := "~/.code-reviewer.yaml"
 	logVerbose(verbose, "loading config: %s", configPath)
 	loader := config.NewFileLoader(configPath)
 	cfg, err := loader.Load(ctx)

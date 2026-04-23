@@ -12,7 +12,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/bborbe/pr-reviewer/pkg/config"
+	"github.com/bborbe/code-reviewer/pkg/config"
 )
 
 var _ = Describe("Config", func() {
@@ -43,8 +43,8 @@ var _ = Describe("Config", func() {
 				validYAML := `repos:
   - url: https://github.com/bborbe/teamvault-docker
     path: /home/user/teamvault-docker
-  - url: https://github.com/bborbe/pr-reviewer
-    path: /home/user/pr-reviewer
+  - url: https://github.com/bborbe/code-reviewer
+    path: /home/user/code-reviewer
 `
 				err := os.WriteFile(configPath, []byte(validYAML), 0600)
 				Expect(err).To(BeNil())
@@ -59,8 +59,8 @@ var _ = Describe("Config", func() {
 				Expect(cfg.Repos).To(HaveLen(2))
 				Expect(cfg.Repos[0].URL).To(Equal("https://github.com/bborbe/teamvault-docker"))
 				Expect(cfg.Repos[0].Path).To(Equal("/home/user/teamvault-docker"))
-				Expect(cfg.Repos[1].URL).To(Equal("https://github.com/bborbe/pr-reviewer"))
-				Expect(cfg.Repos[1].Path).To(Equal("/home/user/pr-reviewer"))
+				Expect(cfg.Repos[1].URL).To(Equal("https://github.com/bborbe/code-reviewer"))
+				Expect(cfg.Repos[1].Path).To(Equal("/home/user/code-reviewer"))
 			})
 		})
 
@@ -71,8 +71,8 @@ var _ = Describe("Config", func() {
   - url: https://github.com/bborbe/teamvault-docker
     path: /home/user/teamvault-docker
     reviewCommand: /custom-review
-  - url: https://github.com/bborbe/pr-reviewer
-    path: /home/user/pr-reviewer
+  - url: https://github.com/bborbe/code-reviewer
+    path: /home/user/code-reviewer
 `
 				err := os.WriteFile(configPath, []byte(yamlWithReviewCmd), 0600)
 				Expect(err).To(BeNil())
@@ -425,8 +425,8 @@ repos:
 			BeforeEach(func() {
 				configPath = filepath.Join(tmpDir, "config.yaml")
 				yamlWithoutAutoApprove := `repos:
-  - url: https://github.com/bborbe/pr-reviewer
-    path: /home/user/pr-reviewer
+  - url: https://github.com/bborbe/code-reviewer
+    path: /home/user/code-reviewer
 `
 				err := os.WriteFile(configPath, []byte(yamlWithoutAutoApprove), 0600)
 				Expect(err).To(BeNil())
@@ -446,8 +446,8 @@ repos:
 				configPath = filepath.Join(tmpDir, "config.yaml")
 				yamlWithAutoApprove := `autoApprove: true
 repos:
-  - url: https://github.com/bborbe/pr-reviewer
-    path: /home/user/pr-reviewer
+  - url: https://github.com/bborbe/code-reviewer
+    path: /home/user/code-reviewer
 `
 				err := os.WriteFile(configPath, []byte(yamlWithAutoApprove), 0600)
 				Expect(err).To(BeNil())
@@ -467,8 +467,8 @@ repos:
 				configPath = filepath.Join(tmpDir, "config.yaml")
 				yamlWithAutoApproveFalse := `autoApprove: false
 repos:
-  - url: https://github.com/bborbe/pr-reviewer
-    path: /home/user/pr-reviewer
+  - url: https://github.com/bborbe/code-reviewer
+    path: /home/user/code-reviewer
 `
 				err := os.WriteFile(configPath, []byte(yamlWithAutoApproveFalse), 0600)
 				Expect(err).To(BeNil())
@@ -498,8 +498,8 @@ repos:
 						Path: "/home/user/teamvault-docker",
 					},
 					{
-						URL:  "https://github.com/bborbe/pr-reviewer",
-						Path: "/home/user/pr-reviewer",
+						URL:  "https://github.com/bborbe/code-reviewer",
+						Path: "/home/user/code-reviewer",
 					},
 				},
 			}
@@ -600,8 +600,8 @@ repos:
 						ReviewCommand: "/custom-review",
 					},
 					{
-						URL:  "https://github.com/bborbe/pr-reviewer",
-						Path: "/home/user/pr-reviewer",
+						URL:  "https://github.com/bborbe/code-reviewer",
+						Path: "/home/user/code-reviewer",
 						// ReviewCommand not set - remains empty, main.go builds dynamically
 					},
 				},
@@ -632,7 +632,7 @@ repos:
 
 		Context("with matching URL and empty reviewCommand", func() {
 			BeforeEach(func() {
-				repoURL = "https://github.com/bborbe/pr-reviewer"
+				repoURL = "https://github.com/bborbe/code-reviewer"
 			})
 
 			It("returns no error", func() {
@@ -640,7 +640,7 @@ repos:
 			})
 
 			It("returns the correct path", func() {
-				Expect(repoInfo.Path).To(Equal("/home/user/pr-reviewer"))
+				Expect(repoInfo.Path).To(Equal("/home/user/code-reviewer"))
 			})
 
 			It("returns empty reviewCommand when not configured", func() {

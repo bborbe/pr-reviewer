@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/bborbe/pr-reviewer/pkg/github"
+	"github.com/bborbe/code-reviewer/pkg/github"
 )
 
 var _ = Describe("ParsePRURL", func() {
@@ -94,7 +94,7 @@ var _ = Describe("ParsePRURL", func() {
 
 	Context("with GitHub URL but not a PR (issue)", func() {
 		BeforeEach(func() {
-			rawURL = "https://github.com/bborbe/pr-reviewer/issues/123"
+			rawURL = "https://github.com/bborbe/code-reviewer/issues/123"
 		})
 
 		It("returns error", func() {
@@ -108,7 +108,7 @@ var _ = Describe("ParsePRURL", func() {
 
 	Context("with GitHub PR URL with non-numeric number", func() {
 		BeforeEach(func() {
-			rawURL = "https://github.com/bborbe/pr-reviewer/pull/abc"
+			rawURL = "https://github.com/bborbe/code-reviewer/pull/abc"
 		})
 
 		It("returns error", func() {
@@ -136,7 +136,7 @@ var _ = Describe("ParsePRURL", func() {
 
 	Context("with URL without scheme", func() {
 		BeforeEach(func() {
-			rawURL = "github.com/bborbe/pr-reviewer/pull/4"
+			rawURL = "github.com/bborbe/code-reviewer/pull/4"
 		})
 
 		It("returns error", func() {

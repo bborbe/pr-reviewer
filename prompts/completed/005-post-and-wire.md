@@ -2,7 +2,7 @@
 spec: 001-mvp-review-single-pr
 status: completed
 summary: Implemented GitHub client and wired everything together in main.go for end-to-end PR review workflow
-container: pr-reviewer-005-post-and-wire
+container: code-reviewer-005-post-and-wire
 dark-factory-version: v0.14.5
 created: "2026-03-04T14:24:53Z"
 queued: "2026-03-04T14:24:53Z"
@@ -53,7 +53,7 @@ Spec: specs/001-mvp-review-single-pr.md — all Desired Behaviors, all Failure M
    ```
    a. Parse args (require exactly 1 URL argument)
    b. Parse PR URL → PRInfo
-   c. Load config from ~/.pr-reviewer.yaml
+   c. Load config from ~/.code-reviewer.yaml
    d. Find local repo path from config
    e. Get PR branch name via gh CLI
    f. Fetch in local repo
@@ -76,10 +76,10 @@ Spec: specs/001-mvp-review-single-pr.md — all Desired Behaviors, all Failure M
    - This way the user always has the review text even if GitHub API fails
 
 9. Error handling — each failure mode from spec must produce the correct message:
-   - No arguments → "usage: pr-reviewer <pr-url>"
+   - No arguments → "usage: code-reviewer <pr-url>"
    - Bad URL → "unsupported URL format: <url>"
-   - No config → "config not found: ~/.pr-reviewer.yaml"
-   - Repo not in config → "repo not found in config, add to ~/.pr-reviewer.yaml: <url>"
+   - No config → "config not found: ~/.code-reviewer.yaml"
+   - Repo not in config → "repo not found in config, add to ~/.code-reviewer.yaml: <url>"
    - Local path missing → "local path not found: <path>"
    - Not a git repo → "not a git repo: <path>"
    - Claude not found → "claude not found in PATH"
@@ -100,7 +100,7 @@ func main() {
 
 func run(ctx context.Context) error {
     if len(os.Args) < 2 {
-        return fmt.Errorf("usage: pr-reviewer <pr-url>")
+        return fmt.Errorf("usage: code-reviewer <pr-url>")
     }
     // ... wire all components
 }
@@ -121,7 +121,7 @@ func (c *ghClient) GetPRBranch(ctx context.Context, owner, repo string, number i
 </implementation>
 
 <constraints>
-- Config file location: ~/.pr-reviewer.yaml
+- Config file location: ~/.code-reviewer.yaml
 - Must use `gh` CLI for GitHub operations (already authenticated)
 - Must use `claude` CLI for reviews — not the SDK, not the API directly
 - Must use `git worktree add/remove` — never checkout in the main working tree
@@ -146,5 +146,5 @@ Run `make precommit` -- must pass.
 - All error messages match spec failure modes exactly
 - GitHub Client interface with counterfeiter mock generated
 - make precommit passes
-- `go build -o pr-reviewer .` produces a working binary
+- `go build -o code-reviewer .` produces a working binary
 </success_criteria>

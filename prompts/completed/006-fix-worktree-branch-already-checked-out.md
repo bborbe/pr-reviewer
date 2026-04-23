@@ -2,7 +2,7 @@
 spec: 001-mvp-review-single-pr
 status: completed
 summary: Fixed 'branch already checked out' error by using detached HEAD worktree with origin/<branch> reference
-container: pr-reviewer-006-fix-worktree-branch-already-checked-out
+container: code-reviewer-006-fix-worktree-branch-already-checked-out
 dark-factory-version: v0.14.5
 created: "2026-03-04T18:51:41Z"
 queued: "2026-03-04T18:51:41Z"

@@ -10,11 +10,11 @@ Tags: [[Dark Factory - Spec Writing Guide]]
 
 ## Problem
 
-When dark-factory creates a PR under user A's GitHub account, and pr-reviewer also runs as user A (same `gh` auth), GitHub rejects the review because a user cannot approve their own pull request. This blocks the autonomous pipeline: dark-factory creates PR → pr-reviewer reviews → but review is rejected as self-review.
+When dark-factory creates a PR under user A's GitHub account, and code-reviewer also runs as user A (same `gh` auth), GitHub rejects the review because a user cannot approve their own pull request. This blocks the autonomous pipeline: dark-factory creates PR → code-reviewer reviews → but review is rejected as self-review.
 
 ## Goal
 
-After completion, pr-reviewer supports using a separate GitHub identity for posting reviews. A dedicated `GH_TOKEN` (from a different GitHub user or GitHub App) is passed to all `gh` CLI calls, so reviews come from a different identity than the PR author.
+After completion, code-reviewer supports using a separate GitHub identity for posting reviews. A dedicated `GH_TOKEN` (from a different GitHub user or GitHub App) is passed to all `gh` CLI calls, so reviews come from a different identity than the PR author.
 
 ## Non-goals
 
@@ -26,7 +26,7 @@ After completion, pr-reviewer supports using a separate GitHub identity for post
 ## Desired Behavior
 
 1. Config adds optional `github.token` field referencing an env var
-2. When set, all `gh` CLI calls in pr-reviewer pass `GH_TOKEN=<value>` in the subprocess environment
+2. When set, all `gh` CLI calls in code-reviewer pass `GH_TOKEN=<value>` in the subprocess environment
 3. When not set, `gh` uses default auth (current user) — backward compatible
 4. The token must be from a different GitHub identity than the PR author
 5. Token value is resolved from the referenced env var at runtime, never stored in config
@@ -34,7 +34,7 @@ After completion, pr-reviewer supports using a separate GitHub identity for post
 ### Config
 
 ```yaml
-# ~/.pr-reviewer.yaml
+# ~/.code-reviewer.yaml
 github:
   token: ${PR_REVIEWER_TOKEN}  # env var with PAT from reviewer bot account
 
@@ -69,8 +69,8 @@ The `${VAR}` syntax in config is resolved at load time:
 | Trigger | Expected behavior | Recovery |
 |---------|-------------------|----------|
 | `github.token` references unset env var | Fall back to default `gh` auth, log warning | User sets env var or removes config |
-| Token is invalid (401) | `gh` exits non-zero, pr-reviewer reports auth error | User checks token |
-| Token lacks permissions (403) | `gh` exits non-zero, pr-reviewer reports permission error | User checks token scopes |
+| Token is invalid (401) | `gh` exits non-zero, code-reviewer reports auth error | User checks token |
+| Token lacks permissions (403) | `gh` exits non-zero, code-reviewer reports permission error | User checks token scopes |
 | Token is from same user as PR author | GitHub rejects review as self-review | User uses a different account's token |
 | Config has `github.token` without `${}` | Used as literal token (works but not recommended) | User wraps in `${}` |
 
@@ -79,7 +79,7 @@ The `${VAR}` syntax in config is resolved at load time:
 - Token in config file: only env var references, never raw tokens
 - Token in logs: never — mask if it appears in error output
 - Token in subprocess: only via `cmd.Env`, not as CLI argument (would appear in `ps`)
-- Config file permissions: warn if `~/.pr-reviewer.yaml` is world-readable
+- Config file permissions: warn if `~/.code-reviewer.yaml` is world-readable
 
 ## Acceptance Criteria
 
@@ -99,4 +99,4 @@ make precommit
 
 ## Do-Nothing Option
 
-Run pr-reviewer under a different OS user or in a separate shell with `GH_TOKEN` exported manually. Works but requires manual setup per invocation and breaks the autonomous pipeline.
+Run code-reviewer under a different OS user or in a separate shell with `GH_TOKEN` exported manually. Works but requires manual setup per invocation and breaks the autonomous pipeline.

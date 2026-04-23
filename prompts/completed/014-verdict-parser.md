@@ -1,7 +1,7 @@
 ---
 status: completed
 summary: Implemented verdict parser with conservative parsing logic and 100% test coverage
-container: pr-reviewer-014-verdict-parser
+container: code-reviewer-014-verdict-parser
 dark-factory-version: v0.15.1
 created: "2026-03-04T22:53:47Z"
 queued: "2026-03-04T22:53:47Z"

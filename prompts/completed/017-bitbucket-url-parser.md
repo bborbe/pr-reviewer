@@ -1,7 +1,7 @@
 ---
 status: completed
 summary: Added Bitbucket Server URL parsing alongside existing GitHub URL parsing
-container: pr-reviewer-017-bitbucket-url-parser
+container: code-reviewer-017-bitbucket-url-parser
 dark-factory-version: v0.17.0
 created: "2026-03-05T10:51:03Z"
 queued: "2026-03-05T10:51:03Z"

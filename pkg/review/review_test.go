@@ -12,7 +12,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/bborbe/pr-reviewer/pkg/review"
+	"github.com/bborbe/code-reviewer/pkg/review"
 )
 
 var _ = Describe("DockerReviewer", func() {

@@ -1,7 +1,7 @@
 ---
 status: completed
 summary: Verified project health — make precommit passes with exit code 0, all tests pass, no linting or security issues found.
-container: pr-reviewer-030-fix-tests-and-dod
+container: code-reviewer-030-fix-tests-and-dod
 dark-factory-version: v0.59.5-dirty
 created: "2026-03-20T12:58:06Z"
 queued: "2026-03-20T12:58:06Z"

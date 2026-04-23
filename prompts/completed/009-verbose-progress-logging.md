@@ -2,7 +2,7 @@
 spec: 001-mvp-review-single-pr
 status: completed
 summary: Added progress logging to stderr with -v verbose flag
-container: pr-reviewer-009-verbose-progress-logging
+container: code-reviewer-009-verbose-progress-logging
 dark-factory-version: v0.14.5
 created: "2026-03-04T20:53:29Z"
 queued: "2026-03-04T20:53:29Z"
@@ -10,7 +10,7 @@ started: "2026-03-04T20:53:29Z"
 completed: "2026-03-04T20:58:46Z"
 ---
 <objective>
-Add progress logging to stderr so the user knows pr-reviewer is alive during long operations. Default shows minimal output, -v flag shows detailed steps.
+Add progress logging to stderr so the user knows code-reviewer is alive during long operations. Default shows minimal output, -v flag shows detailed steps.
 </objective>
 
 <context>
@@ -34,7 +34,7 @@ Problem: claude --print takes minutes with zero output. User thinks tool is hung
 
 3. Verbose output (-v) — detailed steps, all to stderr:
    - `parsing URL: <url>`
-   - `loading config: ~/.pr-reviewer.yaml`
+   - `loading config: ~/.code-reviewer.yaml`
    - `repo: <path>`
    - `fetching branch: <branch>`
    - `creating worktree: <worktreePath>`
@@ -49,7 +49,7 @@ Problem: claude --print takes minutes with zero output. User thinks tool is hung
    - Or simpler: two functions `logAlways` and `logVerbose`
 
 5. Update usage message to include -v flag:
-   - `"usage: pr-reviewer [-v] <pr-url>"`
+   - `"usage: code-reviewer [-v] <pr-url>"`
 
 6. Stdout must remain clean — only the review text goes to stdout.
    All progress goes to stderr.

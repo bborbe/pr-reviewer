@@ -5,7 +5,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/bborbe/pr-reviewer/pkg/config"
+	"github.com/bborbe/code-reviewer/pkg/config"
 )
 
 type ConfigLoader struct {

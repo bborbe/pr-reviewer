@@ -14,7 +14,7 @@ Spec 004 posts Bitbucket reviews as plain comments. Like GitHub (spec 003), Bitb
 
 ## Goal
 
-After completion, `pr-reviewer` parses the Claude review output verdict (same as spec 003) and submits the appropriate Bitbucket Server review action (approve or needs-work) alongside the comment, instead of a plain comment only.
+After completion, `code-reviewer` parses the Claude review output verdict (same as spec 003) and submits the appropriate Bitbucket Server review action (approve or needs-work) alongside the comment, instead of a plain comment only.
 
 ## Non-goals
 
