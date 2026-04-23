@@ -8,11 +8,14 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
-## Unreleased
+## v0.9.0
 
-- Transform repo to multi-module layout (trading-style): move CLI + pkg/mocks into `cmd/pr-reviewer/` with own `go.mod`; root becomes tooling-free (no `go.mod`), uses `Makefile.folder` to delegate `precommit`/`test`/`lint` to service dirs
-- Update module path to `github.com/bborbe/code-reviewer/cmd/pr-reviewer`; rewrite all imports and LDFLAGS
-- Move `.golangci.yml`, `.osv-scanner.toml`, `.trivyignore` into `cmd/pr-reviewer/`
+- Transform repo to multi-module layout (bborbe/agent pattern): service at `agent/pr-reviewer/` with own `go.mod`, binary entry point at `cmd/run-task/main.go`; root has no `go.mod`
+- Root `Makefile` delegates `precommit`/`test`/`lint` to service dirs via `Makefile.folder` (auto-discovers Makefiles at any depth)
+- Copy shared Makefile includes from bborbe/agent: `Makefile.docker`, `Makefile.env`, `Makefile.k8s`, `Makefile.precommit`, `Makefile.variables`
+- Update module path to `github.com/bborbe/code-reviewer/agent/pr-reviewer`; rewrite all imports and LDFLAGS
+- Binary renamed `pr-reviewer` → `run-task` (matches Pattern B Job convention)
+- `.golangci.yml`, `.osv-scanner.toml`, `.trivyignore` stay at repo root; service Makefile references via `../../`
 
 ## v0.8.0
 
