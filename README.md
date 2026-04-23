@@ -1,87 +1,124 @@
 # Code Reviewer
 
-CLI tool to review pull requests using local Claude Code with full project context.
+PR review tooling backed by Claude Code. Ships in three modes:
 
-## What it does
+| Mode | Entry | Use case |
+|---|---|---|
+| **Standalone CLI** | `agent/pr-reviewer/cmd/cli/main.go` | Ad-hoc local review — takes a PR URL, posts a comment back |
+| **Local task runner** | `agent/pr-reviewer/cmd/run-task/main.go` | Dev loop for the agent — reads a task markdown file, writes result back |
+| **Kubernetes Job agent** | `agent/pr-reviewer/main.go` | Autonomous PR review triggered by the [agent task controller](https://github.com/bborbe/agent); deployed to dev + prod |
 
-`code-reviewer` takes a GitHub or Bitbucket Server PR URL, resolves it to a local repository checkout, creates a git worktree, runs Claude Code review in that worktree (picking up CLAUDE.md and project-specific rules), and posts the review back as a PR comment. This enables context-aware reviews that respect your project's coding guidelines and custom review agents.
+Repo follows the multi-module layout of [bborbe/agent](https://github.com/bborbe/agent): root has no `go.mod`, the service lives at `agent/pr-reviewer/` with its own module.
 
-## Installation
+## Standalone CLI
 
-```bash
-go install github.com/bborbe/code-reviewer@latest
-```
-
-## Usage
-
-```bash
-code-reviewer [-v] <pr-url>
-```
-
-Examples:
+Takes a GitHub or Bitbucket Server PR URL, runs Claude Code review in a `claude-yolo` container against a local checkout, and posts the review back with a verdict (approve / request-changes / comment).
 
 ```bash
-# Review a GitHub PR
-code-reviewer https://github.com/bborbe/teamvault-docker/pull/4
+go install github.com/bborbe/code-reviewer/agent/pr-reviewer/cmd/cli@latest
 
-# Verbose output
-code-reviewer -v https://github.com/bborbe/code-reviewer/pull/1
+code-reviewer [-v] [--comment-only] <pr-url>
 ```
 
-## Configuration
-
-Create `~/.code-reviewer.yaml`:
-
-**Minimal configuration:**
-
-```yaml
-repos:
-  - url: https://github.com/bborbe/teamvault-docker
-    path: ~/Documents/workspaces/teamvault-docker
-  - url: https://github.com/bborbe/code-reviewer
-    path: ~/Documents/workspaces/code-reviewer
-```
-
-**Full configuration with all options:**
+Config `~/.code-reviewer.yaml`:
 
 ```yaml
 github:
-  token: ${PR_REVIEWER_GITHUB_TOKEN}  # optional: env var reference (this is also the default)
-model: sonnet             # optional: claude model (default: sonnet)
-autoApprove: false        # optional: enable auto-approve on clean reviews (default: false)
+  token: ${PR_REVIEWER_GITHUB_TOKEN}   # optional; falls back to `gh` CLI auth
+model: sonnet                          # sonnet | opus | haiku
+autoApprove: false                     # only post comments unless true
 repos:
-  - url: https://github.com/bborbe/teamvault-docker
-    path: ~/Documents/workspaces/teamvault-docker
-    reviewCommand: /code-review  # optional: custom review command (default: /code-review)
   - url: https://github.com/bborbe/code-reviewer
     path: ~/Documents/workspaces/code-reviewer
-    reviewCommand: /code-review short
+    reviewCommand: /code-review        # optional
 ```
 
-**Configuration notes:**
+Requires: Go 1.26+, [Claude Code CLI](https://claude.com/claude-code), [`gh`](https://cli.github.com/), Docker.
 
-- `github.token`: Optional GitHub token. If not specified or empty after env var resolution, uses `gh` CLI authentication.
-- `model`: Claude model to use (e.g., `sonnet`, `opus`, `haiku`). Defaults to `sonnet`.
-- `autoApprove`: Enable automatic PR approval when review verdict is "approve". Defaults to `false` (safe default - only posts comments). When `true`, PRs will be auto-approved. Request-changes verdicts are always submitted regardless of this setting.
-- `repos[].reviewCommand`: Command passed to Claude Code CLI. Defaults to `/code-review`.
+## Kubernetes Job agent
 
-## How it works
+Pattern B Job spawned per task by the [agent task controller](https://github.com/bborbe/agent). Receives `TASK_CONTENT` via env, calls Claude Code with `Bash(gh:*)` access and a `GH_TOKEN` from teamvault, publishes the result back via Kafka.
 
-1. Parse PR URL to extract owner, repo, and PR number
-2. Look up local repository path from config
-3. Fetch PR metadata (source branch) via GitHub API
-4. Run `git fetch` to update local branches
-5. Create temporary git worktree for the PR's source branch
-6. Run Claude Code review in the worktree directory (picks up CLAUDE.md and project context)
-7. Post review output as a PR comment via GitHub API
-8. Remove worktree and clean up
+### Deploy
 
-## Requirements
+```bash
+cd agent/pr-reviewer
+make buca BRANCH=dev     # build + push + apply in dev
+make buca BRANCH=prod    # same for prod
+```
 
-- Go 1.26 or later
-- [Claude Code CLI](https://claude.com/claude-code) installed and available in PATH
-- [GitHub CLI (`gh`)](https://cli.github.com/) installed and authenticated
+`make buca` runs image build → `docker push docker.quant.benjamin-borbe.de/agent-pr-reviewer:<branch>` → `kubectlquant apply` of rendered manifests in `k8s/`.
+
+### Prerequisites
+
+- Teamvault entries:
+  - `SENTRY_DSN_KEY` — Sentry DSN (URL field)
+  - `PR_REVIEWER_GITHUB_TOKEN_KEY` — GitHub PAT (Password field) with `repo` + `read:org` scopes
+- PVC `agent-pr-reviewer` seeded with a valid `.claude/` config (copy from `agent-claude` PVC or run one-time `claude login` in a temp pod; see [claude-oauth-setup.md](https://github.com/bborbe/agent/blob/master/agent/claude/docs/claude-oauth-setup.md))
+- Config CR registered with the task controller (handled by `k8s/agent-pr-reviewer.yaml`)
+
+### Trigger a review
+
+Create a markdown task file in the controller-watched vault with `assignee: pr-reviewer-agent`, `status: in_progress`, `stage: dev|prod`, and a `task_identifier: <uuid>`. Body is the task prompt — typically "Review the pull request at `<url>`". Controller publishes to Kafka, executor spawns the Job, result is written back to the task file.
+
+### Debug
+
+See [[Agent Pipeline Debug Guide]] in the Trading vault for the full step-by-step trace. Quick checks:
+
+```bash
+kubectlquant -n dev get jobs | grep pr-reviewer
+kubectlquant -n dev logs job/pr-reviewer-agent-<uuid>-<timestamp>
+```
+
+## Local task runner
+
+Same binary as the k8s agent, driven from a local file instead of Kafka.
+
+```bash
+cd agent/pr-reviewer
+make run-dummy-task       # generates a sample task file, runs it, writes result back
+```
+
+Useful for iterating on prompts (`pkg/prompts/workflow.md`, `pkg/prompts/output-format.md`) and allowed-tool config without a cluster round-trip.
+
+## Layout
+
+```
+code-reviewer/
+├── agent/pr-reviewer/          service module (own go.mod)
+│   ├── main.go                 k8s Job entry
+│   ├── cmd/
+│   │   ├── cli/                standalone CLI
+│   │   └── run-task/           local file-driven runner
+│   ├── pkg/
+│   │   ├── bitbucket/          Bitbucket Data Center REST client (CLI only)
+│   │   ├── config/             YAML config
+│   │   ├── factory/            DI wiring for k8s/run-task
+│   │   ├── git/                worktree / clone manager (CLI only)
+│   │   ├── github/             GitHub REST client via `gh`
+│   │   ├── prompts/            embedded workflow.md + output-format.md
+│   │   ├── prurl/              platform-agnostic PR URL parser
+│   │   ├── review/             claude-yolo Docker reviewer (CLI only)
+│   │   ├── verdict/            JSON verdict parser
+│   │   └── version/            build-time version injection
+│   ├── k8s/                    Config CRD, Secret, PVC, PriorityClass, ResourceQuota, Makefile
+│   ├── Dockerfile              multi-stage build (Go + claude-code + gh + git)
+│   └── agent/.claude/CLAUDE.md headless-review guardrails
+├── Makefile.*                  shared includes (variables, env, docker, k8s, folder, precommit)
+├── common.env / dev.env / prod.env
+└── prompts/ specs/             dark-factory pipeline metadata
+```
+
+## Verdict contract
+
+Review output must end with a JSON block:
+
+```json
+{"verdict": "approve|request-changes|comment", "reason": "<one-liner>"}
+```
+
+Fallback: heuristic section-header scan (`## Must Fix`, `## Blocking`). See [`pkg/verdict/`](agent/pr-reviewer/pkg/verdict/).
 
 ## License
 
-BSD 2-Clause License. See [LICENSE](LICENSE) file for details.
+BSD 2-Clause License. See [LICENSE](LICENSE).
