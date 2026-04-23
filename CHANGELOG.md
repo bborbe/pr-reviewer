@@ -8,6 +8,15 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.12.0
+
+- Specialize pr-reviewer factory: hardcode AllowedTools + GH_TOKEN passthrough and move prompts.BuildInstructions() inside; drop AllowedToolsRaw/EnvContextRaw/ClaudeEnvRaw CLI args and parseKeyValuePairs helper from both main.go entries
+- Type TaskID field as agentlib.TaskIdentifier directly (no string conversion)
+- Rename Secret data key `PR_REVIEWER_GITHUB_TOKEN` → `GH_TOKEN` so gh CLI picks it up natively; drop `ALLOWED_TOOLS` from Config CRD env
+- Add `make apply` target; `make buca` passes DOCKER_REGISTRY from env
+- Add github-cli + git to container image; shrink image via `apk del npm` + `npm cache clean`
+- Harden Makefile.env: error on invalid BRANCH, outdent conditional includes (Make parsed as recipe)
+
 ## v0.11.0
 
 - feat: add k8s manifests for pr-reviewer (Config CRD, PVC, Secret, PriorityClass, ResourceQuota dev+prod, Makefile)

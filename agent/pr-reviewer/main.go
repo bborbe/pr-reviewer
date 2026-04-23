@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
 	agentlib "github.com/bborbe/agent/lib"
 	claudelib "github.com/bborbe/agent/lib/claude"
@@ -21,7 +20,6 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/bborbe/code-reviewer/agent/pr-reviewer/pkg/factory"
-	"github.com/bborbe/code-reviewer/agent/pr-reviewer/pkg/prompts"
 )
 
 func main() {
@@ -42,24 +40,16 @@ type application struct {
 	// Model selection
 	Model claudelib.ClaudeModel `required:"false" arg:"model" env:"MODEL" usage:"Claude model to use (sonnet, opus)" default:"sonnet"`
 
-	// Allowed tools (comma-separated)
-	AllowedToolsRaw string `required:"false" arg:"allowed-tools" env:"ALLOWED_TOOLS" usage:"Comma-separated list of allowed tools"`
-
-	// Task content from agent pipeline
-	TaskContent string `required:"true" arg:"task-content" env:"TASK_CONTENT" usage:"Raw task markdown from vault"`
-
-	// Environment context passed to prompt (comma-separated KEY=VALUE pairs)
-	EnvContextRaw string `required:"false" arg:"env-context" env:"ENV_CONTEXT" usage:"Comma-separated KEY=VALUE pairs for prompt context"`
-
-	// Environment variables passed to Claude CLI process (comma-separated KEY=VALUE pairs)
-	ClaudeEnvRaw string `required:"false" arg:"claude-env" env:"CLAUDE_ENV" usage:"Comma-separated KEY=VALUE pairs for Claude CLI environment"`
-
 	// Branch for Kafka result delivery
 	Branch base.Branch `required:"true" arg:"branch" env:"BRANCH" usage:"branch"`
 
 	// Kafka delivery (optional — only active when TASK_ID is set)
 	KafkaBrokers libkafka.Brokers `required:"false" arg:"kafka-brokers" env:"KAFKA_BROKERS" usage:"Comma separated list of Kafka brokers"`
-	TaskID       string           `required:"false" arg:"task-id"       env:"TASK_ID"       usage:"Agent task identifier for publishing results back to task controller"`
+
+	TaskID agentlib.TaskIdentifier `required:"false" arg:"task-id" env:"TASK_ID" usage:"Agent task identifier for publishing results back to task controller"`
+
+	// Task content from agent pipeline
+	TaskContent string `required:"true" arg:"task-content" env:"TASK_CONTENT" usage:"Raw task markdown from vault"`
 }
 
 func (a *application) Run(ctx context.Context, sentryClient libsentry.Client) error {
@@ -74,11 +64,7 @@ func (a *application) Run(ctx context.Context, sentryClient libsentry.Client) er
 	taskRunner := factory.CreateTaskRunner(
 		a.ClaudeConfigDir,
 		a.AgentDir,
-		claudelib.ParseAllowedTools(a.AllowedToolsRaw),
 		a.Model,
-		parseKeyValuePairs(a.ClaudeEnvRaw),
-		parseKeyValuePairs(a.EnvContextRaw),
-		prompts.BuildInstructions(),
 		deliverer,
 	)
 
@@ -104,11 +90,10 @@ func (a *application) createDeliverer(
 		if err != nil {
 			return nil, nil, errors.Wrap(ctx, err, "create sync producer failed")
 		}
-		taskID := agentlib.TaskIdentifier(a.TaskID)
 		deliverer := factory.CreateKafkaResultDeliverer(
 			syncProducer,
 			a.Branch,
-			taskID,
+			a.TaskID,
 			a.TaskContent,
 			libtime.NewCurrentDateTime(),
 		)
@@ -120,19 +105,4 @@ func (a *application) createDeliverer(
 	}
 	glog.V(2).Infof("TASK_ID not set, skipping task result publishing")
 	return claudelib.NewNoopResultDeliverer(), func() {}, nil
-}
-
-// parseKeyValuePairs parses "KEY1=VALUE1,KEY2=VALUE2" into a map.
-func parseKeyValuePairs(raw string) map[string]string {
-	if raw == "" {
-		return nil
-	}
-	result := make(map[string]string)
-	for _, pair := range strings.Split(raw, ",") {
-		parts := strings.SplitN(pair, "=", 2)
-		if len(parts) == 2 {
-			result[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
-		}
-	}
-	return result
 }

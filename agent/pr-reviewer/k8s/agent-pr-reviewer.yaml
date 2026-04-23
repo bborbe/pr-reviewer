@@ -11,8 +11,6 @@ spec:
   secretName: agent-pr-reviewer
   volumeClaim: agent-pr-reviewer
   volumeMountPath: /home/claude/.claude
-  env:
-    ALLOWED_TOOLS: Read,Grep,Glob,Bash(git:*),Bash(gh:*),WebFetch
   resources:
     requests:
       cpu: 500m
