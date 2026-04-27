@@ -129,6 +129,7 @@ func CreateAgent(
 	model claudelib.ClaudeModel,
 	ghToken string,
 ) *agentlib.Agent {
+	tokenCheck := steps.NewGHTokenCheckStep(ghToken)
 	planningStep := claudelib.NewAgentStep(claudelib.AgentStepConfig{
 		Name:          "pr-plan",
 		Runner:        CreateClaudeRunner(claudeConfigDir, agentDir, model, ghToken, planningTools),
@@ -154,9 +155,9 @@ func CreateAgent(
 		review.BuildInstructions(),
 	)
 	return agentlib.NewAgent(
-		agentlib.NewPhase("planning", planningStep),
-		agentlib.NewPhase("in_progress", executionStep),
-		agentlib.NewPhase("ai_review", reviewStep),
+		agentlib.NewPhase("planning", tokenCheck, planningStep),
+		agentlib.NewPhase("in_progress", tokenCheck, executionStep),
+		agentlib.NewPhase("ai_review", tokenCheck, reviewStep),
 	)
 }
 

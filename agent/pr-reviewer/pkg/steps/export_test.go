@@ -15,3 +15,10 @@ type VerdictPayloadForTest = verdictPayload
 func ExtractVerdictForTest(raw string) (VerdictPayloadForTest, error) {
 	return extractVerdict(raw)
 }
+
+// NewGHTokenCheckStepWithURLForTest constructs a ghTokenCheckStep
+// pointed at a custom URL (httptest.Server in tests). Production code
+// should use NewGHTokenCheckStep which hardcodes the GitHub URL.
+func NewGHTokenCheckStepWithURLForTest(token, url string) *ghTokenCheckStep {
+	return newGHTokenCheckStep(token, url)
+}
