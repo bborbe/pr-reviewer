@@ -8,6 +8,12 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.15.0
+
+- feat: add plugin installer library (`pkg/plugins/`) ensuring Claude Code plugins are installed before task handling
+- feat: wire plugin installer into agent-pr-reviewer startup — ensures `bborbe/coding` plugin is present on every pod boot
+- docs: add `docs/claude-plugin-cli.md` documenting claude plugin CLI derivation rules
+
 ## v0.14.3
 
 - feat(pr-reviewer): add `pkg/plugins` package with `Installer` interface and `NewExecCommander` for managing Claude Code plugins (install/update via `claude plugin` CLI)

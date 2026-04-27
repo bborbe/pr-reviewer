@@ -23,6 +23,7 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/bborbe/code-reviewer/agent/pr-reviewer/pkg/factory"
+	"github.com/bborbe/code-reviewer/agent/pr-reviewer/pkg/plugins"
 )
 
 func main() {
@@ -62,6 +63,13 @@ type application struct {
 
 func (a *application) Run(ctx context.Context, _ libsentry.Client) error {
 	glog.V(2).Infof("agent-pr-reviewer started phase=%s", a.Phase)
+
+	installer := plugins.NewInstaller(plugins.NewExecCommander())
+	if err := installer.EnsureInstalled(ctx, []plugins.Spec{
+		{Marketplace: "bborbe/coding", Name: "coding"},
+	}); err != nil {
+		return errors.Wrap(ctx, err, "ensure plugins installed")
+	}
 
 	deliverer, cleanup, err := factory.CreateDeliverer(
 		ctx, a.TaskID, a.KafkaBrokers, a.Branch, a.TaskContent,

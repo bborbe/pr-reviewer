@@ -4,11 +4,11 @@ status: draft
 
 ## Summary
 
-- A new long-running service polls GitHub on a configurable interval and creates a vault task per new pull request in scope, so the existing PR-reviewer agent gets triggered automatically without human task creation
+- A new long-running service polls GitHub on a configurable interval and emits a Kafka `CreateTaskCommand` per new pull request in scope, so the existing PR-reviewer agent gets triggered automatically without human task creation
 - Default repo scope is `bborbe/*` (configurable via env); default poll interval is 5 minutes (configurable)
 - Filters out drafts and bot-authored PRs by default; an allowlist of bot user names is env-configurable
-- Re-triggers a review when an open PR receives new commits (`synchronize`-style event), marking the prior task body as outdated
-- Vault is the dedup source-of-truth: before creating a task, the watcher checks for an existing task with the same `pr_url` to avoid duplicates
+- Re-triggers a review when an open PR receives new commits by emitting an `UpdateFrontmatterCommand` that resets phase + appends an outdated marker to the task body
+- The controller (single writer to the vault) owns task creation and mutation — the watcher never touches vault git directly
 
 ## Problem
 
@@ -16,7 +16,7 @@ The PR-reviewer agent at `agent/pr-reviewer/` works mechanically (v0.14.2 deploy
 
 ## Goal
 
-After completion, opening (or pushing to) a pull request in any in-scope `bborbe/*` repo causes the watcher to detect it within one poll interval, write a vault task with the PR URL and metadata into the existing OpenClaw task pipeline, and push it via `obsidian-git`. The existing pr-reviewer agent then picks the task up and reviews. No human action required between PR open and review running.
+After completion, opening (or pushing to) a pull request in any in-scope `bborbe/*` repo causes the watcher to detect it within one poll interval, publish a `CreateTaskCommand` to Kafka, and the controller writes the resulting task into the OpenClaw vault. The existing pr-reviewer agent then picks the task up and reviews. No human action required between PR open and review running. The watcher itself never touches vault git or filesystem.
 
 ## Non-goals
 
@@ -31,7 +31,7 @@ After completion, opening (or pushing to) a pull request in any in-scope `bborbe
 ## Desired Behavior
 
 1. The service runs as a persistent process, polling GitHub on a configurable interval (default: 5 minutes)
-2. Each poll, the watcher fetches all open PRs in the configured repo scope (default: `bborbe/*`) updated since the last poll cursor
+2. Each poll, the watcher issues a single GitHub Search API query covering ALL in-scope repos at once (e.g. `is:pr is:open archived:false user:bborbe`), using the configured cursor as a `updated:>=<cursor>` qualifier; results are paginated and consumed fully before advancing the cursor
 3. On cold start (no cursor), the cursor is set to service-start-time — no historical PRs are picked up
 4. For each candidate PR, the watcher applies filters: skip drafts; skip PRs authored by users in the configured bot allowlist (default: `dependabot[bot]`, `renovate[bot]`)
 5. For each PR that passes filters, the watcher checks the vault's task directory for an existing task whose body or frontmatter references the same `pr_url`. If present and the head SHA is unchanged, skip
@@ -48,9 +48,12 @@ After completion, opening (or pushing to) a pull request in any in-scope `bborbe
 - Vault task schema must match what the existing pr-reviewer agent already consumes — same frontmatter fields (`assignee: pr-reviewer-agent`, `phase: planning`, `status: in_progress`, `stage: <env>`, `task_identifier: <uuid>`, `title: <PR title>`) plus a body containing the PR URL
 - One pod per environment (single-replica K8s Deployment); no concurrent-watcher locking required
 - Cursor stored at `/data/cursor.json` (PVC-backed) — survives pod restarts; corrupt or missing cursor falls back to service-start-time
-- All HTTP calls to GitHub use the official `gh` CLI invoked as a subprocess (consistent with pr-reviewer's pattern, no separate REST client needed) — pass args separately, never via shell interpolation
+- All GitHub API calls use `github.com/google/go-github` (latest stable major) + `golang.org/x/oauth2` for token authentication. The Search API endpoint (`client.Search.Issues`) covers all in-scope repos in a single query — avoid per-repo iteration. Different choice from the pr-reviewer agent (which uses `gh` CLI interactively); the poller is a deterministic programmatic consumer where a typed library wins
+- The watcher MUST handle pagination via the response's `NextPage` field until all results are consumed
+- The watcher MUST inspect rate-limit response headers and back off explicitly when remaining quota drops below a safe threshold — don't rely on retry-on-429 alone
+- The container image does NOT need the `gh` CLI installed (lighter image than pr-reviewer)
 - Errors wrapped via `github.com/bborbe/errors` (per `docs/dod.md`); structured logging via `glog`
-- Tests use Ginkgo/Gomega + Counterfeiter for mocking the gh-subprocess boundary and the vault-write boundary (specific interface names are a prompt-level decision)
+- Tests use Ginkgo/Gomega; mock the GitHub API client boundary via `httptest.Server` (returning canned responses for the Search endpoint, including pagination + rate-limit-header scenarios), and Counterfeiter for the vault-write boundary (specific interface names are a prompt-level decision)
 - Configurable env vars: `POLL_INTERVAL` (default `5m`), `REPO_SCOPE` (default `bborbe`), `BOT_ALLOWLIST` (comma-separated, default `dependabot[bot],renovate[bot]`), `VAULT_REPO_PATH` (no default — must be set), `VAULT_TASK_DIR` (default `tasks`), `STAGE` (no default — must be explicitly set per environment)
 - Startup validation: fail-fast (process exits non-zero before any poll) if `VAULT_REPO_PATH`, `STAGE`, or `GH_TOKEN` are unset. Defaults exist only for genuinely-optional behavior knobs (interval, scope, allowlist, task dir) — never for environment-routing fields where a silent default could write to the wrong place
 - Stale-task body marker MUST follow the exact format `## Outdated by force-push <old-sha>` so future tooling can grep for it
@@ -61,9 +64,11 @@ After completion, opening (or pushing to) a pull request in any in-scope `bborbe
 | Trigger | Expected behavior | Recovery |
 |---------|-------------------|----------|
 | Empty result from GitHub query (no PRs) | Cursor advances to `now`, no tasks created | n/a |
-| GitHub API returns non-zero on `gh search prs` | Logged error, cursor unchanged, retry next poll | Automatic |
-| `GH_TOKEN` unauthorized (HTTP 401 from `gh`) | Logged error with rotation guidance, cursor unchanged, retry next poll | Operator rotates teamvault entry |
-| GitHub rate-limit hit (HTTP 429 / 403 with rate-limit headers) | Logged warning, cursor unchanged, retry next poll | Automatic next interval |
+| GitHub API client returns error on Search call | Logged error, cursor unchanged, retry next poll | Automatic |
+| `GH_TOKEN` unauthorized (HTTP 401 from GitHub API) | Logged error with rotation guidance, cursor unchanged, retry next poll | Operator rotates teamvault entry |
+| GitHub rate-limit hit (HTTP 429 / 403 with rate-limit headers, reactive) | Logged warning, cursor unchanged, retry next poll | Automatic next interval |
+| Rate-limit headers show remaining quota below safe threshold (proactive) | Skip remainder of poll cycle, cursor unchanged, sleep until reset window, log warning with reset time | Automatic |
+| Pagination fails partway through result set | Discard partial results from this poll, cursor unchanged, retry next poll | Automatic |
 | Vault git push fails (network, auth, conflict) | Task file unstaged from this attempt, cursor not advanced past this PR, retry next poll | Automatic; persistent failure surfaces in logs |
 | Vault git pull conflicts with local state | Logged error, no tasks created this cycle, retry next poll | Operator resolves vault state |
 | Cursor file corrupt / unparseable | Treat as cold start (service-start-time), log warning | Automatic |
@@ -79,7 +84,7 @@ After completion, opening (or pushing to) a pull request in any in-scope `bborbe
 ## Security / Abuse Cases
 
 - `GH_TOKEN` only needs `repo` read scope — minimum privilege; verify scope at startup (similar to pr-reviewer's preflight pattern)
-- All `gh` CLI invocations pass args as separate exec arguments, never via shell interpolation — repo names and PR URLs come from GitHub API, but shell-out hygiene matters
+- `go-github` call arguments (repo names, query strings, scopes) flow via typed struct fields and the library's URL-encoding — no shell interpolation, no exec subprocess; injection surface is closed by construction
 - Vault writes are limited to the configured `VAULT_TASK_DIR` only — no path traversal from PR titles or branch names that could write outside `tasks/`
 - Task body content sanitizes PR title / description for any markdown injection that could break the task file's frontmatter parsing
 - The PR-reviewer agent eventually consumes these task bodies and feeds them to Claude — if a PR title contains prompt-injection content, the agent inherits that risk. Document this constraint; do not attempt content-level sanitization in the watcher (premature and ineffective)
@@ -90,7 +95,7 @@ After completion, opening (or pushing to) a pull request in any in-scope `bborbe
 - [ ] `main.go` reads env vars, starts the polling loop, handles SIGTERM gracefully
 - [ ] Filters (drafts, bot allowlist) and dedup (vault task scan by `pr_url`) implemented and unit-tested
 - [ ] Re-trigger on new head SHA writes the `## Outdated by force-push <old-sha>` marker and resets frontmatter
-- [ ] Counterfeiter fakes at the gh-subprocess boundary and the vault-write boundary (interface names are a prompt decision)
+- [ ] GitHub API client tested via `httptest.Server` with pagination + rate-limit scenarios; Counterfeiter fake at the vault-write boundary (interface names are a prompt decision)
 - [ ] Unit tests cover all rows of the Failure Modes table
 - [ ] `make precommit` passes for `agent/pr-watcher/`
 - [ ] Released as `code-reviewer v0.16.0`
