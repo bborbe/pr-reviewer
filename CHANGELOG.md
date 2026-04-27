@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.15.3
+
+- feat(watcher/github): implement full poll cycle — cursor persistence, Kafka command publishing (`CreateTaskCommand`/`UpdateFrontmatterCommand`), force-push detection, rate-limit backoff, and wired main.go tick loop
+
 ## v0.15.2
 
 - feat(watcher/github): add GitHub API layer — `GitHubClient` interface with `SearchPRs`/`GetHeadSHA`, `filter.ShouldSkip`, and `taskid.Derive` deterministic task ID derivation using UUID v5

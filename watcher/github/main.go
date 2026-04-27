@@ -10,12 +10,15 @@ package main
 import (
 	"context"
 	"os"
+	"time"
 
 	"github.com/bborbe/errors"
 	libkafka "github.com/bborbe/kafka"
 	libsentry "github.com/bborbe/sentry"
 	"github.com/bborbe/service"
 	"github.com/golang/glog"
+
+	"github.com/bborbe/code-reviewer/watcher/github/pkg/factory"
 )
 
 func main() {
@@ -36,12 +39,44 @@ type application struct {
 }
 
 func (a *application) Run(ctx context.Context, _ libsentry.Client) error {
-	glog.V(2).
-		Infof("github-pr-watcher started stage=%s scope=%s interval=%s", a.Stage, a.RepoScope, a.PollInterval)
+	pollInterval, err := time.ParseDuration(a.PollInterval)
+	if err != nil {
+		return errors.Wrapf(ctx, err, "parse poll interval %q", a.PollInterval)
+	}
 
-	// TODO(spec-009 prompt 3): replace with real poll loop wiring
-	// For the scaffold prompt, we just block on ctx so the binary
-	// shape exists for sibling prompts to extend.
-	<-ctx.Done()
-	return errors.Wrap(ctx, ctx.Err(), "context cancelled")
+	botAllowlist := factory.ParseBotAllowlist(a.BotAllowlist)
+	startTime := time.Now().UTC()
+
+	w, cleanup, err := factory.CreateWatcher(
+		ctx,
+		a.GHToken,
+		a.KafkaBrokers,
+		a.Stage,
+		a.RepoScope,
+		botAllowlist,
+		pollInterval,
+		startTime,
+	)
+	if err != nil {
+		return errors.Wrap(ctx, err, "create watcher")
+	}
+	defer cleanup()
+
+	glog.V(2).
+		Infof("github-pr-watcher starting stage=%s scope=%s interval=%s", a.Stage, a.RepoScope, a.PollInterval)
+
+	ticker := time.NewTicker(pollInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			glog.V(2).Infof("context cancelled, exiting cleanly")
+			return nil
+		case <-ticker.C:
+			glog.V(2).Infof("poll cycle start stage=%s", a.Stage)
+			if err := w.Poll(ctx); err != nil {
+				glog.Errorf("poll cycle error: %v", err)
+			}
+		}
+	}
 }
