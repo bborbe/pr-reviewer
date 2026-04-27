@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: ["009"]
 summary: 'Implemented GitHub API layer: GitHubClient interface with SearchPRs/GetHeadSHA backed by go-github v62, filter.ShouldSkip/IsBotAuthor, taskid.Derive using UUID v5 SHA1, all with httptest.Server-based tests and counterfeiter mock generation'
 container: code-reviewer-036-spec-009-github-client
@@ -7,6 +7,7 @@ dark-factory-version: v0.135.19-1-gc08c946
 created: "2026-04-27T20:45:00Z"
 queued: "2026-04-27T21:02:13Z"
 started: "2026-04-27T21:07:23Z"
+completed: "2026-04-27T21:16:35Z"
 ---
 
 <summary>
