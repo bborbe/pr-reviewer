@@ -53,6 +53,36 @@ Environment variables:
 8. Post structured review (approve / request-changes) or plain comment based on verdict + `autoApprove`
 9. Remove clone
 
+## Smoke Test PR
+
+**https://github.com/bborbe/code-reviewer/pull/2** — `test: delete-this-pr-never`
+
+Permanent test fixture. Trivial diff (HTML comment added to `README.md`,
+3 additions / 0 deletions). Use this PR for any local or k8s smoke test.
+**Do not close, do not merge.**
+
+Local smoke run (3-phase agent):
+
+```bash
+# Create task file with PR URL
+cat > /tmp/pr-reviewer-smoke.md <<'EOF'
+---
+phase: planning
+status: in_progress
+---
+
+Review https://github.com/bborbe/code-reviewer/pull/2 and return a verdict.
+EOF
+
+# Walk the 3 phases — task file is mutated in place between runs
+go run ./cmd/run-task --task-file /tmp/pr-reviewer-smoke.md --phase planning
+go run ./cmd/run-task --task-file /tmp/pr-reviewer-smoke.md --phase in_progress
+go run ./cmd/run-task --task-file /tmp/pr-reviewer-smoke.md --phase ai_review
+```
+
+After the third run the file should contain `## Plan`, `## Review`, and
+`## Verdict` JSON sections.
+
 ## Verdict Contract
 
 Claude Code must emit a JSON block (fenced or bare) containing:
