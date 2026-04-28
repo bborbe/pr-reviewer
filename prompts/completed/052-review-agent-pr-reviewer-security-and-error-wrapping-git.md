@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Added isValidBranchName validation to CreateClone to block argument injection via malformed branch names, and migrated all fmt.Errorf calls in git.go to github.com/bborbe/errors with full context propagation.
 container: code-reviewer-052-review-agent-pr-reviewer-security-and-error-wrapping-git
 dark-factory-version: v0.135.19-1-gc08c946
 created: "2026-04-28T12:00:00Z"
 queued: "2026-04-28T15:19:27Z"
 started: "2026-04-28T15:52:39Z"
+completed: "2026-04-28T15:56:35Z"
 ---
 
 <summary>
