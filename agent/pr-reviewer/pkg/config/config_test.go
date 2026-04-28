@@ -508,7 +508,7 @@ repos:
 		})
 
 		JustBeforeEach(func() {
-			repoInfo, err = cfg.FindRepo(repoURL)
+			repoInfo, err = cfg.FindRepo(ctx, repoURL)
 		})
 
 		Context("with matching URL and custom reviewCommand", func() {

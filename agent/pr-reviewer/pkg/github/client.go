@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/bborbe/errors"
+
 	"github.com/bborbe/code-reviewer/agent/pr-reviewer/pkg/verdict"
 )
 
@@ -74,12 +76,17 @@ func (c *ghClient) GetPRBranches(
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		return PRBranches{}, fmt.Errorf("gh pr view failed: %s", strings.TrimSpace(stderr.String()))
+		return PRBranches{}, errors.Wrapf(
+			ctx,
+			err,
+			"gh pr view failed: %s",
+			strings.TrimSpace(stderr.String()),
+		)
 	}
 
 	lines := strings.Split(strings.TrimSpace(stdout.String()), "\n")
 	if len(lines) < 2 || lines[0] == "" || lines[1] == "" {
-		return PRBranches{}, fmt.Errorf("gh pr view returned incomplete branch info")
+		return PRBranches{}, errors.Errorf(ctx, "gh pr view returned incomplete branch info")
 	}
 
 	return PRBranches{
@@ -114,7 +121,12 @@ func (c *ghClient) PostComment(
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("gh pr comment failed: %s", strings.TrimSpace(stderr.String()))
+		return errors.Wrapf(
+			ctx,
+			err,
+			"gh pr comment failed: %s",
+			strings.TrimSpace(stderr.String()),
+		)
 	}
 
 	return nil
@@ -131,7 +143,11 @@ func (c *ghClient) SubmitReview(
 	// Only approve and request-changes are supported
 	// For comment verdict, caller should use PostComment instead
 	if v != verdict.VerdictApprove && v != verdict.VerdictRequestChanges {
-		return fmt.Errorf("unsupported verdict for SubmitReview: %s (use PostComment instead)", v)
+		return errors.Errorf(
+			ctx,
+			"unsupported verdict for SubmitReview: %s (use PostComment instead)",
+			v,
+		)
 	}
 
 	repoArg := fmt.Sprintf("%s/%s", owner, repo)
@@ -159,7 +175,7 @@ func (c *ghClient) SubmitReview(
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("gh pr review failed: %s", strings.TrimSpace(stderr.String()))
+		return errors.Wrapf(ctx, err, "gh pr review failed: %s", strings.TrimSpace(stderr.String()))
 	}
 
 	return nil

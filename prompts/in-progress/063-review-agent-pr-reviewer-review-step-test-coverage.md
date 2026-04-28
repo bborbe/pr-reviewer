@@ -1,6 +1,7 @@
 ---
-status: draft
+status: approved
 created: "2026-04-28T12:00:00Z"
+queued: "2026-04-28T15:36:26Z"
 ---
 
 <summary>
@@ -18,35 +19,26 @@ Add Ginkgo/Gomega tests for `reviewStep.Name()`, `reviewStep.ShouldRun()`, and `
 <context>
 Read `CLAUDE.md` for project conventions.
 
+Verified facts:
+- `claudelib.ClaudeRunner` interface is `github.com/bborbe/agent/lib/claude.ClaudeRunner` with single method `Run(ctx context.Context, prompt string) (*ClaudeResult, error)`.
+- `reviewStep.ShouldRun(_ context.Context, md *agentlib.Markdown) (bool, error)` — takes `*agentlib.Markdown`, NOT a `string`.
+- `reviewStep.Run` returns `*agentlib.Result` with fields `Status` (e.g. `agentlib.AgentStatusFailed`, `agentlib.AgentStatusDone`) and `NextPhase` (string: `"done"` or `"human_review"`).
+- Mocks live in `agent/pr-reviewer/mocks/` (existing dir with `bitbucket-client.go`, `config-loader.go`, `github-client.go`, `mocks.go`, `reviewer.go`, `worktree-manager.go` — no `ClaudeRunner` yet).
+- The exported helper `ExtractVerdictForTest` exists in `export_test.go`; verdict-parsing tests are NOT in scope for this prompt.
+
 Files to read before making changes (read ALL first):
-- `agent/pr-reviewer/pkg/steps/review.go` — `reviewStep` struct (~line 35), `NewReviewStep` (~line 41), `Name` (~line 50), `ShouldRun` (~line 55), `Run` (~line 65); `extractVerdict` and `lastJSONBlock` helpers
-- `agent/pr-reviewer/pkg/steps/review_test.go` — existing test coverage (verify what is already tested)
-- `agent/pr-reviewer/pkg/steps/export_test.go` — exported symbols for white-box testing; check if `ClaudeRunner` is already exported for tests
+- `agent/pr-reviewer/pkg/steps/review.go` — `reviewStep` struct, `NewReviewStep`, `Name`, `ShouldRun`, `Run`
+- `agent/pr-reviewer/pkg/steps/review_test.go` — existing test coverage (do not duplicate verdict-parsing tests)
+- `agent/pr-reviewer/pkg/steps/export_test.go` — exported symbols for white-box testing
 - `agent/pr-reviewer/pkg/steps/steps_suite_test.go` — suite setup (counterfeiter generate directive)
-- `agent/pr-reviewer/mocks/` — check if a `ClaudeRunner` mock already exists
 </context>
 
 <requirements>
-1. **Check if `claudelib.ClaudeRunner` mock already exists**:
-   ```bash
-   ls agent/pr-reviewer/mocks/ | grep -i runner
-   grep -rn "ClaudeRunner" agent/pr-reviewer/mocks/ 2>/dev/null | head
-   ```
-   Also check the `bborbe/agent/lib` module for an existing fake:
-   ```bash
-   find $(go env GOPATH)/pkg/mod/github.com/bborbe/agent/lib@*/ -name "*runner*" -o -name "*claude*" 2>/dev/null | grep -i fake
-   ```
-
-2. **If no mock exists, add a `//counterfeiter:generate` directive** for `claudelib.ClaudeRunner` to `export_test.go` or a new file in `pkg/steps/`:
+1. **Generate `ClaudeRunner` mock** — no mock exists yet in `agent/pr-reviewer/mocks/`. Add a `//counterfeiter:generate` directive to a new file `agent/pr-reviewer/pkg/steps/mocks.go` (or in `export_test.go`). The interface lives at `github.com/bborbe/agent/lib/claude.ClaudeRunner`:
    ```go
-   //counterfeiter:generate -o ../../mocks/claude-runner.go --fake-name ClaudeRunner github.com/bborbe/agent/lib/claude ClaudeRunner
+   //counterfeiter:generate -o ../../mocks/claude-runner.go --fake-name ClaudeRunner github.com/bborbe/agent/lib/claude.ClaudeRunner
    ```
-   First grep-verify the exact interface name and import path:
-   ```bash
-   grep -rn "type ClaudeRunner interface\|type Runner interface" \
-     $(go env GOPATH)/pkg/mod/github.com/bborbe/agent/lib@*/claude/ 2>/dev/null
-   ```
-   Then run:
+   Use a fake-name that does NOT collide with the real interface — e.g. `--fake-name ClaudeRunnerMock` if `ClaudeRunner` collides. Then:
    ```bash
    cd agent/pr-reviewer && go generate ./pkg/steps/...
    ```
@@ -63,13 +55,15 @@ Files to read before making changes (read ALL first):
    })
    ```
 
-   **`ShouldRun()` tests — no mock needed (reads markdown only):**
+   **`ShouldRun()` tests — `ShouldRun` takes `*agentlib.Markdown`, not a string:**
    ```go
    Describe("ShouldRun", func() {
-       DescribeTable("returns false when verdict section already exists",
+       DescribeTable("decides based on existing ## Verdict section",
            func(content string, expected bool) {
+               md, err := agentlib.NewMarkdown(content) // grep-verify constructor name
+               Expect(err).NotTo(HaveOccurred())
                step := steps.NewReviewStep(/* deps */)
-               result, err := step.ShouldRun(ctx, content)
+               result, err := step.ShouldRun(ctx, md)
                Expect(err).NotTo(HaveOccurred())
                Expect(result).To(Equal(expected))
            },
@@ -79,6 +73,7 @@ Files to read before making changes (read ALL first):
        )
    })
    ```
+   Grep-verify the actual `agentlib.Markdown` constructor before writing — it may be `agentlib.ParseMarkdown(ctx, content)` or `agentlib.NewMarkdown(content)`.
 
    **`Run()` tests — require `ClaudeRunner` mock:**
    - **Claude runner returns error** → `Run` should return `agentlib.AgentStatusFailed` result, NOT propagate error
@@ -87,11 +82,7 @@ Files to read before making changes (read ALL first):
    - **Claude runner returns `verdict: fail`** → `Run` returns `AgentStatusDone` with `NextPhase = "human_review"`
    - Use the Counterfeiter mock for `ClaudeRunner` — call `.RunReturns(...)` or `.RunStub = ...` per the counterfeiter API
 
-4. **Grep-verify `AgentStatusFailed`, `AgentStatusDone`, and `NextPhase` field names** from the agent lib before writing assertions:
-   ```bash
-   grep -rn "AgentStatusFailed\|AgentStatusDone\|type Result struct\|NextPhase" \
-     $(go env GOPATH)/pkg/mod/github.com/bborbe/agent/lib@*/... 2>/dev/null | head -20
-   ```
+4. **Verified phase constants** (no need to re-grep): `agentlib.AgentStatusFailed`, `agentlib.AgentStatusDone`, and `NextPhase` is a string-typed field on `agentlib.Result`. Values used in `review.go`: `"done"`, `"human_review"`.
 
 5. **Check coverage after adding tests**:
    ```bash

@@ -6,14 +6,13 @@ package config
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/bborbe/errors"
+	"github.com/golang/glog"
 	"gopkg.in/yaml.v3"
 )
 
@@ -146,8 +145,8 @@ func (l *fileLoader) Load(ctx context.Context) (*Config, error) {
 	if err == nil {
 		mode := fileInfo.Mode()
 		if mode&0004 != 0 {
-			log.Printf(
-				"warning: config file is world-readable, consider: chmod 600 %s",
+			glog.Warningf(
+				"config file is world-readable, consider: chmod 600 %s",
 				expandedPath,
 			)
 		}
@@ -158,7 +157,7 @@ func (l *fileLoader) Load(ctx context.Context) (*Config, error) {
 		return nil, errors.Wrapf(ctx, err, "parse config failed")
 	}
 
-	if err := validateConfig(&cfg); err != nil {
+	if err := validateConfig(ctx, &cfg); err != nil {
 		return nil, errors.Wrapf(ctx, err, "validate config failed")
 	}
 
@@ -177,10 +176,10 @@ func ExpandHome(path string) string {
 	return filepath.Join(home, path[1:])
 }
 
-func validateConfig(cfg *Config) error {
+func validateConfig(ctx context.Context, cfg *Config) error {
 	for _, repo := range cfg.Repos {
 		if repo.URL == "" || repo.Path == "" {
-			return fmt.Errorf("invalid repo entry: url and path required")
+			return errors.Errorf(ctx, "invalid repo entry: url and path required")
 		}
 	}
 	return nil
@@ -189,7 +188,7 @@ func validateConfig(cfg *Config) error {
 // FindRepo looks up the repository information including path and review command.
 // Returns RepoInfo with path and reviewCommand. If reviewCommand is not specified,
 // it remains empty and main.go will construct "/pr-review <target-branch>" dynamically.
-func (c *Config) FindRepo(repoURL string) (*RepoInfo, error) {
+func (c *Config) FindRepo(ctx context.Context, repoURL string) (*RepoInfo, error) {
 	normalizedURL := normalizeURL(repoURL)
 
 	for _, repo := range c.Repos {
@@ -201,7 +200,11 @@ func (c *Config) FindRepo(repoURL string) (*RepoInfo, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("repo not found in config, add to ~/.code-reviewer.yaml: %s", repoURL)
+	return nil, errors.Errorf(
+		ctx,
+		"repo not found in config, add to ~/.code-reviewer.yaml: %s",
+		repoURL,
+	)
 }
 
 func normalizeURL(url string) string {

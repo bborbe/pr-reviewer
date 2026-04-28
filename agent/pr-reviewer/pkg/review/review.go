@@ -11,6 +11,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/bborbe/errors"
 )
 
 // Reviewer runs a code review using the claude CLI.
@@ -41,22 +43,22 @@ func (r *dockerReviewer) Review(
 ) (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("get home directory: %w", err)
+		return "", errors.Wrapf(ctx, err, "get home directory")
 	}
 
 	// Write prompt to temp file (same pattern as dark-factory)
 	promptFile, err := os.CreateTemp("", "code-reviewer-prompt-*.md")
 	if err != nil {
-		return "", fmt.Errorf("create prompt file: %w", err)
+		return "", errors.Wrapf(ctx, err, "create prompt file")
 	}
 	defer func() { _ = os.Remove(promptFile.Name()) }()
 
 	if _, err := promptFile.WriteString(command); err != nil {
 		_ = promptFile.Close()
-		return "", fmt.Errorf("write prompt file: %w", err)
+		return "", errors.Wrapf(ctx, err, "write prompt file")
 	}
 	if err := promptFile.Close(); err != nil {
-		return "", fmt.Errorf("close prompt file: %w", err)
+		return "", errors.Wrapf(ctx, err, "close prompt file")
 	}
 
 	// Build docker command using default entrypoint with env vars.
@@ -84,7 +86,12 @@ func (r *dockerReviewer) Review(
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("claude review failed: %s", strings.TrimSpace(stderr.String()))
+		return "", errors.Wrapf(
+			ctx,
+			err,
+			"claude review failed: %s",
+			strings.TrimSpace(stderr.String()),
+		)
 	}
 
 	return strings.TrimSpace(stdout.String()), nil

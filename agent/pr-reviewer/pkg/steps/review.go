@@ -78,7 +78,7 @@ func (s *reviewStep) Run(ctx context.Context, md *agentlib.Markdown) (*agentlib.
 		Body:    runResult.Result,
 	})
 
-	verdict, err := extractVerdict(runResult.Result)
+	verdict, err := extractVerdict(ctx, runResult.Result)
 	if err != nil {
 		return &agentlib.Result{
 			Status:    agentlib.AgentStatusDone,
@@ -107,7 +107,7 @@ func (s *reviewStep) Run(ctx context.Context, md *agentlib.Markdown) (*agentlib.
 // prose explanation. To be tolerant, we (1) try direct unmarshal of the
 // trimmed response, then (2) strip ```json fences if present, then
 // (3) extract the last balanced {...} block from the response.
-func extractVerdict(raw string) (verdictPayload, error) {
+func extractVerdict(ctx context.Context, raw string) (verdictPayload, error) {
 	trimmed := strings.TrimSpace(raw)
 
 	// 1. Direct attempt.
@@ -126,12 +126,12 @@ func extractVerdict(raw string) (verdictPayload, error) {
 	}
 
 	// 3. Extract last balanced {...} block.
-	block, ok := lastJSONBlock(trimmed)
+	block, ok := lastJSONBlock(ctx, trimmed)
 	if !ok {
-		return verdictPayload{}, fmt.Errorf("no JSON object found in response")
+		return verdictPayload{}, errors.Errorf(ctx, "no JSON object found in response")
 	}
 	if err := json.Unmarshal([]byte(block), &v); err != nil {
-		return verdictPayload{}, fmt.Errorf("extract last JSON block: %w", err)
+		return verdictPayload{}, errors.Wrapf(ctx, err, "extract last JSON block")
 	}
 	return v, nil
 }
@@ -139,7 +139,7 @@ func extractVerdict(raw string) (verdictPayload, error) {
 // lastJSONBlock returns the last balanced {...} substring in s, or
 // "", false if none exists. Walks from the end finding the closing
 // brace, then walks back tracking brace depth to find the matching open.
-func lastJSONBlock(s string) (string, bool) {
+func lastJSONBlock(_ context.Context, s string) (string, bool) {
 	end := strings.LastIndex(s, "}")
 	if end < 0 {
 		return "", false

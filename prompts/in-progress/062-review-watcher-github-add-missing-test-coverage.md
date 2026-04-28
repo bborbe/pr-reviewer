@@ -1,6 +1,7 @@
 ---
-status: draft
+status: approved
 created: "2026-04-28T00:00:00Z"
+queued: "2026-04-28T15:36:26Z"
 ---
 
 <summary>
@@ -10,7 +11,7 @@ created: "2026-04-28T00:00:00Z"
 - fetchHeadSHA cache hit (two PRs with the same task ID) is untested
 - LoadCursor OS read error (file exists but unreadable) propagates to Poll — untested
 - All these are correctness-critical paths that affect cursor state and publish behavior
-- Tests must use the existing Counterfeiter mocks (FakeGitHubClient, FakeCommandPublisher)
+- Tests must use the existing Counterfeiter mocks (mocks.GitHubClient, mocks.CommandPublisher)
 </summary>
 
 <objective>
@@ -19,13 +20,14 @@ Add tests for the four uncovered error and logic paths in `watcher/github/pkg/wa
 
 <context>
 Read `CLAUDE.md` for project conventions.
-Read `~/.claude/plugins/marketplaces/coding/docs/go-testing-guide.md` for Ginkgo/Gomega patterns.
+
+Mock types in `pkg/mocks/`: `GitHubClient` (in `github_client.go`) and `CommandPublisher` (in `command_publisher.go`) — note these are the actual exported names, NOT prefixed with `Fake`.
 
 Files to read before making changes (read ALL first):
-- `watcher/github/pkg/watcher_test.go` (full): all existing test cases, the `BeforeEach` setup, and how `FakeGitHubClient` and `FakeCommandPublisher` are configured
+- `watcher/github/pkg/watcher_test.go` (full): all existing test cases, the `BeforeEach` setup, and how `mocks.GitHubClient` and `mocks.CommandPublisher` are configured
 - `watcher/github/pkg/watcher.go` (~lines 178-240): `publishCreate`, `publishForcePush`, `fetchHeadSHA` implementations
-- `watcher/github/pkg/mocks/github_client.go`: available stub methods on `FakeGitHubClient`
-- `watcher/github/pkg/mocks/command_publisher.go`: available stub methods on `FakeCommandPublisher`
+- `watcher/github/pkg/mocks/github_client.go`: available stub methods on `mocks.GitHubClient`
+- `watcher/github/pkg/mocks/command_publisher.go`: available stub methods on `mocks.CommandPublisher`
 - `watcher/github/pkg/cursor.go` (~lines 28-47): `LoadCursor` error branches
 </context>
 
@@ -85,7 +87,7 @@ Files to read before making changes (read ALL first):
 - Only add new test cases — do NOT modify existing tests
 - Use external test package `pkg_test` (consistent with the existing file)
 - Use Ginkgo/Gomega patterns — no `t.Error`, no table-driven tests
-- Use existing `FakeGitHubClient` and `FakeCommandPublisher` mocks — do NOT create manual mocks
+- Use existing `mocks.GitHubClient` and `mocks.CommandPublisher` mocks — do NOT create manual mocks
 - Use `errors.Wrapf(ctx, err, "...")` from `github.com/bborbe/errors` — never `fmt.Errorf`
 </constraints>
 

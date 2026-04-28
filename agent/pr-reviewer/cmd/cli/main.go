@@ -80,7 +80,7 @@ func run(ctx context.Context, verbose bool, commentOnly bool) error {
 	}
 
 	// Find local repo information
-	repoInfo, err := cfg.FindRepo(prInfo.RepoURL)
+	repoInfo, err := cfg.FindRepo(ctx, prInfo.RepoURL)
 	if err != nil {
 		return err
 	}

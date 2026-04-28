@@ -4,6 +4,8 @@
 
 package steps
 
+import "context"
+
 // VerdictPayloadForTest re-exports the unexported verdictPayload so
 // review_test.go (in the steps_test package) can assert on the parsed
 // values without exposing the type to production callers.
@@ -13,7 +15,7 @@ type VerdictPayloadForTest = verdictPayload
 // review_test.go (in the steps_test package) can table-test parsing
 // across the various LLM response shapes Claude produces.
 func ExtractVerdictForTest(raw string) (VerdictPayloadForTest, error) {
-	return extractVerdict(raw)
+	return extractVerdict(context.Background(), raw)
 }
 
 // NewGHTokenCheckStepWithURLForTest constructs a ghTokenCheckStep
