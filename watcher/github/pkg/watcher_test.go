@@ -25,6 +25,7 @@ func newTestWatcher(
 	pub *mocks.CommandPublisher,
 	cursorPath string,
 	startTime libtime.DateTime,
+	fakeMetrics *mocks.Metrics,
 ) pkg.Watcher {
 	return pkg.NewWatcher(
 		ghClient,
@@ -34,24 +35,27 @@ func newTestWatcher(
 		"bborbe",
 		[]string{"dependabot[bot]"},
 		"dev",
+		fakeMetrics,
 	)
 }
 
 var _ = Describe("pkg.Watcher", func() {
 	var (
-		ctx        context.Context
-		cancel     context.CancelFunc
-		ghClient   *mocks.GitHubClient
-		pub        *mocks.CommandPublisher
-		tmpDir     string
-		cursorPath string
-		startTime  libtime.DateTime
+		ctx         context.Context
+		cancel      context.CancelFunc
+		ghClient    *mocks.GitHubClient
+		pub         *mocks.CommandPublisher
+		fakeMetrics *mocks.Metrics
+		tmpDir      string
+		cursorPath  string
+		startTime   libtime.DateTime
 	)
 
 	BeforeEach(func() {
 		ctx, cancel = context.WithCancel(context.Background())
 		ghClient = new(mocks.GitHubClient)
 		pub = new(mocks.CommandPublisher)
+		fakeMetrics = new(mocks.Metrics)
 		startTime = libtime.DateTime(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
 		var err error
 		tmpDir, err = os.MkdirTemp("", "watcher-test-*")
@@ -72,13 +76,16 @@ var _ = Describe("pkg.Watcher", func() {
 				RateRemaining: 100,
 			}, nil)
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime)
+			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
 			err := w.Poll(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pub.PublishCreateCallCount()).To(Equal(0))
 			Expect(pub.PublishUpdateFrontmatterCallCount()).To(Equal(0))
 			_, err = os.Stat(cursorPath)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(fakeMetrics.IncPollCycleCallCount()).To(Equal(1))
+			result := fakeMetrics.IncPollCycleArgsForCall(0)
+			Expect(result).To(Equal("success"))
 		})
 	})
 
@@ -102,7 +109,7 @@ var _ = Describe("pkg.Watcher", func() {
 			ghClient.GetHeadSHAReturns("abc123", nil)
 			pub.PublishCreateReturns(nil)
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime)
+			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
 			err := w.Poll(ctx)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -112,6 +119,9 @@ var _ = Describe("pkg.Watcher", func() {
 			_, cmd := pub.PublishCreateArgsForCall(0)
 			Expect(string(cmd.TaskIdentifier)).NotTo(BeEmpty())
 			Expect(cmd.Frontmatter["assignee"]).To(Equal("pr-reviewer-agent"))
+			Expect(fakeMetrics.IncPRPublishedCallCount()).To(Equal(1))
+			command := fakeMetrics.IncPRPublishedArgsForCall(0)
+			Expect(command).To(Equal("create"))
 		})
 	})
 
@@ -133,7 +143,7 @@ var _ = Describe("pkg.Watcher", func() {
 			ghClient.GetHeadSHAReturns("sha-existing", nil)
 
 			// Pre-populate cursor with the same SHA
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime)
+			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
 			// First poll: creates the entry
 			pub.PublishCreateReturns(nil)
 			Expect(w.Poll(ctx)).NotTo(HaveOccurred())
@@ -141,7 +151,7 @@ var _ = Describe("pkg.Watcher", func() {
 
 			// Second poll: same SHA, no publish
 			pub = new(mocks.CommandPublisher)
-			w = newTestWatcher(ghClient, pub, cursorPath, startTime)
+			w = newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
 			Expect(w.Poll(ctx)).NotTo(HaveOccurred())
 			Expect(pub.PublishCreateCallCount()).To(Equal(0))
 			Expect(pub.PublishUpdateFrontmatterCallCount()).To(Equal(0))
@@ -168,7 +178,7 @@ var _ = Describe("pkg.Watcher", func() {
 			ghClient.GetHeadSHAReturns("old-sha", nil)
 			pub.PublishCreateReturns(nil)
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime)
+			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
 			Expect(w.Poll(ctx)).NotTo(HaveOccurred())
 			Expect(pub.PublishCreateCallCount()).To(Equal(1))
 
@@ -177,7 +187,7 @@ var _ = Describe("pkg.Watcher", func() {
 			ghClient.GetHeadSHAReturns("new-sha", nil)
 			pub.PublishUpdateFrontmatterReturns(nil)
 
-			w = newTestWatcher(ghClient, pub, cursorPath, startTime)
+			w = newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
 			Expect(w.Poll(ctx)).NotTo(HaveOccurred())
 
 			Expect(pub.PublishUpdateFrontmatterCallCount()).To(Equal(1))
@@ -204,7 +214,7 @@ var _ = Describe("pkg.Watcher", func() {
 				RateRemaining: 100,
 			}, nil)
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime)
+			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
 			Expect(w.Poll(ctx)).NotTo(HaveOccurred())
 			Expect(pub.PublishCreateCallCount()).To(Equal(0))
 			Expect(pub.PublishUpdateFrontmatterCallCount()).To(Equal(0))
@@ -227,7 +237,7 @@ var _ = Describe("pkg.Watcher", func() {
 				RateRemaining: 100,
 			}, nil)
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime)
+			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
 			Expect(w.Poll(ctx)).NotTo(HaveOccurred())
 			Expect(pub.PublishCreateCallCount()).To(Equal(0))
 		})
@@ -237,13 +247,16 @@ var _ = Describe("pkg.Watcher", func() {
 		It("Poll returns nil, cursor unchanged, no publish calls", func() {
 			ghClient.SearchPRsReturns(pkg.SearchResult{}, errors.New("network timeout"))
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime)
+			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
 			err := w.Poll(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pub.PublishCreateCallCount()).To(Equal(0))
 			// pkg.Cursor file should not exist (no save after error)
 			_, statErr := os.Stat(cursorPath)
 			Expect(os.IsNotExist(statErr)).To(BeTrue())
+			Expect(fakeMetrics.IncPollCycleCallCount()).To(Equal(1))
+			result := fakeMetrics.IncPollCycleArgsForCall(0)
+			Expect(result).To(Equal("github_error"))
 		})
 	})
 
@@ -264,7 +277,7 @@ var _ = Describe("pkg.Watcher", func() {
 			ghClient.GetHeadSHAReturns("sha123", nil)
 			pub.PublishCreateReturns(errors.New("kafka unavailable"))
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime)
+			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
 			err := w.Poll(ctx)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -272,7 +285,7 @@ var _ = Describe("pkg.Watcher", func() {
 			// Verify by doing a second poll and checking PublishCreate is called again
 			pub2 := new(mocks.CommandPublisher)
 			pub2.PublishCreateReturns(nil)
-			w2 := newTestWatcher(ghClient, pub2, cursorPath, startTime)
+			w2 := newTestWatcher(ghClient, pub2, cursorPath, startTime, fakeMetrics)
 			Expect(w2.Poll(ctx)).NotTo(HaveOccurred())
 			Expect(pub2.PublishCreateCallCount()).To(Equal(1))
 		})
@@ -297,7 +310,7 @@ var _ = Describe("pkg.Watcher", func() {
 				return pkg.SearchResult{}, nil
 			}
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime)
+			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
 			err := w.Poll(cancelCtx)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -310,7 +323,7 @@ var _ = Describe("pkg.Watcher", func() {
 				RateRemaining: 100,
 			}, nil)
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime)
+			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
 			Expect(w.Poll(ctx)).NotTo(HaveOccurred())
 
 			Expect(ghClient.SearchPRsCallCount()).To(Equal(1))
@@ -328,7 +341,7 @@ var _ = Describe("pkg.Watcher", func() {
 			Expect(os.Chmod(cursorPath, 0000)).To(Succeed())
 			defer func() { _ = os.Chmod(cursorPath, 0600) }()
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime)
+			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
 			err := w.Poll(ctx)
 			Expect(err).To(HaveOccurred())
 		})
@@ -362,7 +375,7 @@ var _ = Describe("pkg.Watcher", func() {
 			ghClient.GetHeadSHAReturns("sha-initial", nil)
 			pub.PublishCreateReturns(nil)
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime)
+			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
 			Expect(w.Poll(ctx)).NotTo(HaveOccurred())
 			Expect(pub.PublishCreateCallCount()).To(Equal(2))
 
@@ -374,7 +387,7 @@ var _ = Describe("pkg.Watcher", func() {
 			}, nil)
 			pub2 := new(mocks.CommandPublisher)
 			pub2.PublishCreateReturns(nil)
-			w2 := newTestWatcher(ghClient, pub2, cursorPath, startTime)
+			w2 := newTestWatcher(ghClient, pub2, cursorPath, startTime, fakeMetrics)
 			Expect(w2.Poll(ctx)).NotTo(HaveOccurred())
 
 			cursor, err := pkg.LoadCursor(ctx, cursorPath, startTime)
@@ -395,7 +408,13 @@ var _ = Describe("pkg.Watcher", func() {
 			}, nil)
 
 			// Use an unwritable path
-			w := newTestWatcher(ghClient, pub, "/nonexistent/path/cursor.json", startTime)
+			w := newTestWatcher(
+				ghClient,
+				pub,
+				"/nonexistent/path/cursor.json",
+				startTime,
+				fakeMetrics,
+			)
 			err := w.Poll(ctx)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -420,7 +439,7 @@ var _ = Describe("pkg.Watcher", func() {
 			ghClient.GetHeadSHAReturns("sha1", nil)
 			pub.PublishCreateReturns(nil)
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime)
+			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
 			Expect(w.Poll(ctx)).NotTo(HaveOccurred())
 			Expect(ghClient.GetHeadSHACallCount()).To(Equal(1))
 		})
@@ -444,7 +463,7 @@ var _ = Describe("pkg.Watcher", func() {
 			ghClient.GetHeadSHAReturns("sha1", nil)
 			pub.PublishCreateReturns(nil)
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime)
+			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
 			Expect(w.Poll(ctx)).NotTo(HaveOccurred())
 
 			Expect(pub.PublishCreateCallCount()).To(Equal(1))
@@ -476,14 +495,14 @@ var _ = Describe("pkg.Watcher", func() {
 			}, nil)
 			ghClient.GetHeadSHAReturns("sha-v1", nil)
 			pub.PublishCreateReturns(nil)
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime)
+			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
 			Expect(w.Poll(ctx)).NotTo(HaveOccurred())
 
 			// Second poll: force-push
 			pub2 := new(mocks.CommandPublisher)
 			ghClient.GetHeadSHAReturns("sha-v2", nil)
 			pub2.PublishUpdateFrontmatterReturns(nil)
-			w2 := newTestWatcher(ghClient, pub2, cursorPath, startTime)
+			w2 := newTestWatcher(ghClient, pub2, cursorPath, startTime, fakeMetrics)
 			Expect(w2.Poll(ctx)).NotTo(HaveOccurred())
 
 			Expect(pub2.PublishUpdateFrontmatterCallCount()).To(Equal(1))

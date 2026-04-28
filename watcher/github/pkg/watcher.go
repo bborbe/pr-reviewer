@@ -30,6 +30,7 @@ func NewWatcher(
 	scope string,
 	botAllowlist []string,
 	stage string,
+	metrics Metrics,
 ) Watcher {
 	return &watcher{
 		ghClient:     ghClient,
@@ -39,6 +40,7 @@ func NewWatcher(
 		scope:        scope,
 		botAllowlist: botAllowlist,
 		stage:        stage,
+		metrics:      metrics,
 	}
 }
 
@@ -50,6 +52,7 @@ type watcher struct {
 	scope        string
 	botAllowlist []string
 	stage        string
+	metrics      Metrics
 }
 
 func (w *watcher) Poll(ctx context.Context) error {
@@ -58,8 +61,9 @@ func (w *watcher) Poll(ctx context.Context) error {
 		return errors.Wrapf(ctx, err, "load cursor")
 	}
 
-	allPRs, ok := w.fetchAllPRs(ctx, cursorState.LastUpdatedAt)
-	if !ok {
+	allPRs, abortReason := w.fetchAllPRs(ctx, cursorState.LastUpdatedAt)
+	if abortReason != "" {
+		w.metrics.IncPollCycle(abortReason)
 		return nil
 	}
 
@@ -72,15 +76,16 @@ func (w *watcher) Poll(ctx context.Context) error {
 	if err := SaveCursor(ctx, w.cursorPath, cursorState); err != nil {
 		glog.Errorf("failed to save cursor err=%v", err)
 	}
+	w.metrics.IncPollCycle("success")
 	return nil
 }
 
-// fetchAllPRs paginates GitHub search results. Returns (prs, true) on success,
-// (nil, false) if the caller should abort the poll cycle.
+// fetchAllPRs paginates GitHub search results. Returns (prs, "") on success,
+// or (nil, reason) where reason is "github_error" or "rate_limited" if the caller should abort.
 func (w *watcher) fetchAllPRs(
 	ctx context.Context,
 	since libtime.DateTime,
-) ([]PullRequest, bool) {
+) ([]PullRequest, string) {
 	page := 1
 	var allPRs []PullRequest
 
@@ -88,7 +93,7 @@ func (w *watcher) fetchAllPRs(
 		result, err := w.ghClient.SearchPRs(ctx, w.scope, since, page)
 		if err != nil {
 			glog.Errorf("github search failed err=%v", err)
-			return nil, false
+			return nil, "github_error"
 		}
 
 		allPRs = append(allPRs, result.PullRequests...)
@@ -100,11 +105,11 @@ func (w *watcher) fetchAllPRs(
 
 		select {
 		case <-ctx.Done():
-			return nil, false
+			return nil, ""
 		default:
 		}
 	}
-	return allPRs, true
+	return allPRs, ""
 }
 
 // processPRs iterates over fetched PRs, publishes commands, and returns the max updated-at seen.
@@ -124,6 +129,7 @@ func (w *watcher) processPRs(
 
 		if ShouldSkipPR(pr, w.botAllowlist) {
 			glog.V(3).Infof("skipping pr=%s/%s#%d reason=filtered", pr.Owner, pr.Repo, pr.Number)
+			w.metrics.IncPRPublished("skipped")
 			if known, ok := cursorState.HeadSHAs[taskIDStr]; ok {
 				newHeadSHAs[taskIDStr] = known
 			}
@@ -185,11 +191,13 @@ func (w *watcher) publishCreate(
 	}
 	if err := w.publisher.PublishCreate(ctx, cmd); err != nil {
 		glog.Errorf("publish create-task failed pr=%s err=%v", pr.HTMLURL, err)
+		w.metrics.IncPRPublished("error")
 		return false
 	}
 	cursorState.HeadSHAs[taskIDStr] = headSHA
 	glog.V(2).
 		Infof("published CreateTaskCommand pr=%s/%s#%d taskID=%s", pr.Owner, pr.Repo, pr.Number, taskIDStr)
+	w.metrics.IncPRPublished("create")
 	return true
 }
 
@@ -211,11 +219,13 @@ func (w *watcher) publishForcePush(
 	}
 	if err := w.publisher.PublishUpdateFrontmatter(ctx, cmd); err != nil {
 		glog.Errorf("publish update-frontmatter failed pr=%s err=%v", pr.HTMLURL, err)
+		w.metrics.IncPRPublished("error")
 		return false
 	}
 	cursorState.HeadSHAs[taskIDStr] = newSHA
 	glog.V(2).
 		Infof("published UpdateFrontmatterCommand pr=%s/%s#%d taskID=%s", pr.Owner, pr.Repo, pr.Number, taskIDStr)
+	w.metrics.IncPRPublished("update_frontmatter")
 	return true
 }
 

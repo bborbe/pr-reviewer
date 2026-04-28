@@ -64,6 +64,7 @@ func CreateWatcher(
 		repoScope,
 		botAllowlist,
 		stage,
+		pkg.NewMetrics(),
 	)
 	return w, cleanup, nil
 }
