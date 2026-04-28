@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: 'Added Prometheus metrics to watcher/github: Metrics interface with counterfeiter mock, poll cycle and PR-published counters registered in init() with pre-initialized labels, Watcher and factory wired, tests updated with FakeMetrics and key assertions.'
 container: code-reviewer-060-review-watcher-github-add-prometheus-metrics
 dark-factory-version: v0.135.19-1-gc08c946
 created: "2026-04-28T00:00:00Z"
 queued: "2026-04-28T15:31:17Z"
 started: "2026-04-28T18:21:08Z"
+completed: "2026-04-28T18:25:45Z"
 ---
 
 <summary>
