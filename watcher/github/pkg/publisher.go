@@ -23,7 +23,7 @@ type CommandPublisher interface {
 	PublishUpdateFrontmatter(ctx context.Context, cmd agentlib.UpdateFrontmatterCommand) error
 }
 
-// New returns a CommandPublisher backed by the given CommandObjectSender.
+// NewCommandPublisher returns a CommandPublisher backed by the given CommandObjectSender.
 func NewCommandPublisher(sender cdb.CommandObjectSender) CommandPublisher {
 	return &kafkaPublisher{sender: sender}
 }

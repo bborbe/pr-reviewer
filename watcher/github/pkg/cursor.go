@@ -17,13 +17,13 @@ import (
 // DefaultCursorPath is the default path for cursor state persistence.
 const DefaultCursorPath = "/data/cursor.json"
 
-// State holds the watcher's persisted cursor.
+// Cursor holds the watcher's persisted poll state, including the last-seen update time and a map of task-identifier to head SHA for force-push detection.
 type Cursor struct {
 	LastUpdatedAt time.Time         `json:"last_updated_at"`
 	HeadSHAs      map[string]string `json:"head_shas"`
 }
 
-// Load reads cursor state from path.
+// LoadCursor reads cursor state from path.
 // Returns cold-start state with startTime if the file is missing or corrupt.
 func LoadCursor(ctx context.Context, path string, startTime time.Time) (Cursor, error) {
 	data, err := os.ReadFile(path) // #nosec G304 -- path is config-controlled
@@ -46,7 +46,7 @@ func LoadCursor(ctx context.Context, path string, startTime time.Time) (Cursor, 
 	return state, nil
 }
 
-// Save persists cursor state to path atomically via a temp file + rename.
+// SaveCursor persists cursor state to path atomically via a temp file + rename.
 func SaveCursor(ctx context.Context, path string, state Cursor) error {
 	data, err := json.Marshal(state)
 	if err != nil {

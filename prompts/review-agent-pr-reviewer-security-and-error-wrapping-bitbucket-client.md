@@ -19,33 +19,40 @@ Harden the Bitbucket HTTP client against slow-server DoS and cleartext credentia
 Read `CLAUDE.md` for project conventions.
 
 Files to read before making changes (read ALL first):
-- `agent/pr-reviewer/pkg/bitbucket/client.go` — all methods (`GetPRBranches` ~line 50, `PostComment` ~line 125, `Approve` ~line 165, `NeedsWork` ~line 205, `buildURL` ~line 241, `checkResponseStatus` ~line 290, `httpClient` struct ~line 30, `NewBitbucketClient` ~line 38)
+- `agent/pr-reviewer/pkg/bitbucket/client.go` — `NewClient` (~line 35, NOT `NewBitbucketClient`), `httpClient` struct (~line 42), `GetPRBranches` (~line 71), `PostComment` (~line 120), `Approve` (~line 160), `NeedsWork` (~line 192), `buildURL` (~line 241), `checkResponseStatus` (~line 250), `checkApproveResponseStatus` (~line 268)
 - `agent/pr-reviewer/pkg/bitbucket/client_test.go` — existing test coverage and test server pattern
 - `agent/pr-reviewer/pkg/steps/gh_token.go` — reference implementation: `http.Client{Timeout: 10 * time.Second}` (~line 61)
 </context>
 
 <requirements>
-1. **Add `Timeout: 30 * time.Second` to the `http.Client` in the struct literal** (~line 38 in `NewBitbucketClient` or wherever `httpClient` field is initialised). Use the same pattern as `pkg/steps/gh_token.go:61`.
+1. **Add `Timeout: 30 * time.Second` to the `http.Client`** in `NewClient` (~line 35). Replace `httpClient: &http.Client{}` with `httpClient: &http.Client{Timeout: 30 * time.Second}`. Same pattern as `pkg/steps/gh_token.go:61`.
 
-2. **Harden `buildURL`** (~lines 241–246): reject the `http://` scheme outright. Change to:
+2. **Harden `buildURL`** (~lines 241–246) — current code passes through any `http://` or `https://` prefix. Change so that only loopback/test hosts are allowed to remain `http://`; everything else is upgraded to HTTPS. The tests use `httptest.NewServer` which produces `http://127.0.0.1:PORT/...`.
+
+   New `buildURL`:
    ```go
    func (c *httpClient) buildURL(host, path string) string {
        if strings.HasPrefix(host, "https://") {
            return host + path
        }
-       // Bare hostname or unrecognised scheme: enforce HTTPS
-       host = strings.TrimPrefix(host, "http://")
+       if strings.HasPrefix(host, "http://") {
+           // Allow http only for loopback (test servers); upgrade everything else.
+           u := strings.TrimPrefix(host, "http://")
+           if strings.HasPrefix(u, "127.0.0.1") || strings.HasPrefix(u, "localhost") || strings.HasPrefix(u, "[::1]") {
+               return host + path
+           }
+           return "https://" + u + path
+       }
        return "https://" + host + path
    }
    ```
-   This silently upgrades any `http://` host to `https://` and warns via the existing test that already passes an `httptest.NewServer` URL (which uses `http://` — tests must still pass because the scheme enforcement is for real hostnames, not test server URLs; adjust the test helper if needed or accept that the test's `httptest` URL is already stripped by `prurl.Parse` before reaching `buildURL`).
+   This preserves existing test behavior (httptest uses 127.0.0.1) while enforcing HTTPS in production.
 
-   If the upgrade silently breaks existing tests (httptest uses `http://`), keep the `http://` pass-through for test mode OR adjust the constructor to accept a scheme override for tests. The simplest safe change: strip `http://` prefix and prepend `https://` (test code sets `server.URL` which is an absolute URL and is passed directly — confirm whether tests call `buildURL` with the full `http://host` or just the bare host; read the test carefully before changing).
-
-3. **Replace all `fmt.Errorf` calls with `errors.Wrapf` / `errors.Errorf`** from `github.com/bborbe/errors`. All methods already have `ctx context.Context` as their first parameter:
+3. **Replace all `fmt.Errorf` calls with `errors.Wrapf` / `errors.Errorf`** from `github.com/bborbe/errors`. The 4 public methods (`GetPRBranches`, `PostComment`, `Approve`, `NeedsWork`) already have `ctx context.Context`. The two helpers `checkResponseStatus` and `checkApproveResponseStatus` do NOT — add `ctx context.Context` as their first parameter and update their callers to pass `ctx`:
    - `fmt.Errorf("...: %w", err)` → `errors.Wrapf(ctx, err, "...")`
    - `fmt.Errorf("...")` (no wrapped error) → `errors.Errorf(ctx, "...")`
-   - Files to update: `GetPRBranches`, `PostComment`, `Approve`, `NeedsWork` methods — approximately 18 call sites (lines 81, 88, 98, 103, 107, 110, 135, 140, 148, 173, 180, 214, 219, 227, 255–281).
+   - Method call sites: lines 81, 88, 98, 103, 107, 110, 135, 140, 148, 173, 180, 214, 219, 227.
+   - Helper call sites (in `checkResponseStatus`/`checkApproveResponseStatus`, ~lines 255–281): same conversion.
 
 4. **Fix bare `return err`** in three places (~lines 153, 185, 232) where callers of `checkResponseStatus` / `checkApproveResponseStatus` propagate the error without context. Replace with:
    ```go

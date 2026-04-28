@@ -14,7 +14,7 @@ func IsBotAuthor(pr PullRequest, allowlist []string) bool {
 	return false
 }
 
-// ShouldSkip returns true if the PR should be filtered out (draft or bot-authored).
+// ShouldSkipPR returns true if the PR should be filtered out because it is a draft or bot-authored.
 func ShouldSkipPR(pr PullRequest, botAllowlist []string) bool {
 	return pr.IsDraft || IsBotAuthor(pr, botAllowlist)
 }

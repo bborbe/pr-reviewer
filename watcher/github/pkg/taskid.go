@@ -14,7 +14,7 @@ import (
 // This value is a constant — changing it invalidates all existing task identifiers.
 var prWatcherNamespace = uuid.MustParse("7d4b3e5f-8a21-4c9d-b036-2e5f7a8c1d0e")
 
-// Derive returns a deterministic task identifier for a PR.
+// DeriveTaskID returns a deterministic task identifier for a PR.
 // Input: "<owner>/<repo>#<number>", e.g. "bborbe/code-reviewer#42".
 func DeriveTaskID(owner, repo string, number int) uuid.UUID {
 	key := fmt.Sprintf("%s/%s#%d", owner, repo, number)

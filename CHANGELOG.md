@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.16.10
+
+- docs: fix six GoDoc comments in watcher/github/pkg to start with the declared item name; add package-level doc.go
+
 ## v0.16.9
 
 - chore: add tools.go to watcher/github to pin tool dependencies and prevent go mod tidy from dropping them
