@@ -1,6 +1,7 @@
 ---
-status: draft
+status: approved
 created: "2026-04-28T00:00:00Z"
+queued: "2026-04-28T15:24:46Z"
 ---
 
 <summary>
@@ -27,23 +28,52 @@ Files to read before making changes (read ALL first):
 </context>
 
 <requirements>
-1. **In `watcher/github/pkg/watcher.go`**, modify `processPRs` to build a `newHeadSHAs` map and replace `cursorState.HeadSHAs` at the end of the iteration:
+1. **In `watcher/github/pkg/watcher.go`**, the `cursorState Cursor` is currently passed by value to `processPRs` and `handlePR`. Replacing the `HeadSHAs` field on a value copy will NOT propagate to the caller. **Change `processPRs` to accept `*Cursor`** so the field replacement is visible to `Poll`:
 
-   At the start of `processPRs` (after `maxUpdatedAt := since`), initialize:
+   ```go
+   func (w *watcher) processPRs(ctx context.Context, cursorState *Cursor, allPRs []PullRequest) time.Time { ... }
+   ```
+
+   Update the call site in `Poll` (~line 67) to pass `&cursorState`. `handlePR`/`publishCreate`/`publishForcePush` may keep their value-receiver `cursorState Cursor` semantics if they only mutate map keys (existing behavior), OR also be switched to `*Cursor` for consistency — preferred for clarity.
+
+2. **Build the new `HeadSHAs` map inside `processPRs`** and replace at the end:
+
+   At the start of `processPRs` (after `since := cursorState.LastUpdatedAt`):
    ```go
    newHeadSHAs := make(map[string]string, len(allPRs))
    ```
 
-   After each successful PR processing (where `handlePR` returns true or a PR is skipped via `ShouldSkipPR`):
-   - Copy the known or newly-fetched head SHA into `newHeadSHAs[taskIDStr] = headSHA`
-   - For skipped (filtered) PRs: if the task ID was already in `cursorState.HeadSHAs`, copy it to `newHeadSHAs` to preserve it; if not known, skip (no entry)
+   Restructure the per-PR loop so `taskIDStr` is computed BEFORE the `ShouldSkipPR` skip-continue. This is required because skipped-but-already-known PRs must preserve their SHA in `newHeadSHAs`:
+
+   ```go
+   for _, pr := range allPRs {
+       taskIDStr := DeriveTaskID(pr).String() // (or whatever the existing helper is)
+       if w.filter.ShouldSkipPR(pr) {
+           if known, ok := cursorState.HeadSHAs[taskIDStr]; ok {
+               newHeadSHAs[taskIDStr] = known
+           }
+           continue
+       }
+       headSHA, err := w.fetchHeadSHA(ctx, pr)
+       if err != nil {
+           // Preserve prior SHA on transient fetch error to avoid spurious force-push
+           // detection / re-create on next cycle.
+           if known, ok := cursorState.HeadSHAs[taskIDStr]; ok {
+               newHeadSHAs[taskIDStr] = known
+           }
+           continue
+       }
+       if w.handlePR(ctx, cursorState, pr, taskIDStr, headSHA) {
+           newHeadSHAs[taskIDStr] = headSHA
+       }
+       // update maxUpdatedAt as before
+   }
+   ```
 
    At the end of `processPRs`, before returning `maxUpdatedAt`:
    ```go
    cursorState.HeadSHAs = newHeadSHAs
    ```
-
-   Note: PRs where `fetchHeadSHA` returned an error are NOT added to `newHeadSHAs`. On the next poll cycle those PRs will appear as "new" and trigger a `CreateTaskCommand` — this is the correct behavior (idempotent task creation is handled by the task executor).
 
 2. **Update `watcher/github/pkg/watcher_test.go`** to add a test:
    - First poll: PRs A and B both processed, both in cursor HeadSHAs

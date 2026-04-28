@@ -1,6 +1,7 @@
 ---
-status: draft
+status: approved
 created: "2026-04-28T00:00:00Z"
+queued: "2026-04-28T15:24:46Z"
 ---
 
 <summary>
@@ -21,9 +22,9 @@ Fix `Poll` to surface the `LoadCursor` error instead of swallowing it (align imp
 Read `CLAUDE.md` for project conventions.
 
 Files to read before making changes (read ALL first):
-- `watcher/github/pkg/watcher.go` (full): `Poll` (~lines 58-80), `processPRs` (~line 125), `handlePR` (~line 157), `publishCreate` (~line 178), `publishForcePush` (~line 199)
+- `watcher/github/pkg/watcher.go` (full): `Poll`, `processPRs`, `handlePR`, `publishCreate`, `publishForcePush` — anchor by function name, not line
 - `watcher/github/pkg/watcher_test.go` (full): all tests that construct `Cursor` or call `Poll`
-- `watcher/github/main.go` (~lines 91-93): the `if err := w.Poll(ctx)` block in the poll loop
+- `watcher/github/main.go`: the `runPollLoop` function with the `if err := w.Poll(ctx)` check
 </context>
 
 <requirements>
@@ -44,19 +45,19 @@ Files to read before making changes (read ALL first):
        return errors.Wrapf(ctx, err, "load cursor")
    }
    ```
-   The outer `runPollLoop` in `main.go` already logs `glog.Errorf("poll cycle error: %v", err)` when `Poll` returns an error, so this error will surface properly.
+   The outer `runPollLoop` in `main.go` already logs the error when `Poll` returns one, so this will surface properly. Read the actual log statement in `runPollLoop` before referencing it.
 
    Keep the `fetchAllPRs` error handling as `return nil` (transient — log and retry). Keep `SaveCursor` error as log-only.
 
 2. **Fix `cursorState` aliasing — pass `*Cursor` in `watcher/github/pkg/watcher.go`**:
 
    Change the following function signatures to accept `*Cursor` instead of `Cursor`:
-   - `processPRs(ctx context.Context, cursorState *Cursor, allPRs []PullRequest) time.Time` (~line 125)
-   - `handlePR(ctx context.Context, cursorState *Cursor, pr PullRequest, taskIDStr, headSHA string) bool` (~line 157)
-   - `publishCreate(ctx context.Context, cursorState *Cursor, pr PullRequest, taskIDStr, headSHA string) bool` (~line 178)
-   - `publishForcePush(ctx context.Context, cursorState *Cursor, pr PullRequest, taskIDStr, oldSHA, newSHA string) bool` (~line 199)
+   - `processPRs(ctx context.Context, cursorState *Cursor, allPRs []PullRequest) time.Time`
+   - `handlePR(ctx context.Context, cursorState *Cursor, pr PullRequest, taskIDStr, headSHA string) bool`
+   - `publishCreate(ctx context.Context, cursorState *Cursor, pr PullRequest, taskIDStr, headSHA string) bool`
+   - `publishForcePush(ctx context.Context, cursorState *Cursor, pr PullRequest, taskIDStr, oldSHA, newSHA string) bool`
 
-   Update the call sites in `Poll` to pass `&cursorState` (~line 70):
+   Update the call sites in `Poll` to pass `&cursorState`:
    ```go
    maxUpdatedAt := w.processPRs(ctx, &cursorState, allPRs)
    ```

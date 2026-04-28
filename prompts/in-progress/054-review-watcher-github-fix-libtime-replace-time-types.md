@@ -1,6 +1,7 @@
 ---
-status: draft
+status: approved
 created: "2026-04-28T00:00:00Z"
+queued: "2026-04-28T15:24:46Z"
 ---
 
 <summary>
@@ -19,7 +20,14 @@ Replace all `time.Time` usages in structs and function signatures with `libtime.
 
 <context>
 Read `CLAUDE.md` for project conventions.
-Read `~/.claude/plugins/marketplaces/coding/docs/go-time-injection.md` for the libtime pattern.
+
+The libtime API is verified via `go doc github.com/bborbe/time`:
+- `type DateTime stdtime.Time` (alias of `time.Time`)
+- `func (d DateTime) Time() stdtime.Time` — convert back to stdlib `time.Time`
+- `func (d DateTime) String() string` and `func (d DateTime) Format(layout string) string`
+- `func DateTimePtr(time *stdtime.Time) *DateTime` — convert from stdlib pointer
+- `type CurrentDateTimeGetter interface { Now() DateTime }`
+- `func NewCurrentDateTime() CurrentDateTime` — implements `CurrentDateTimeGetter`
 
 Files to read before making changes (read ALL first):
 - `watcher/github/pkg/githubclient.go` (~lines 19-53): `PullRequest.UpdatedAt time.Time`, `SearchResult.RateResetAt time.Time`, `SearchPRs` signature with `since time.Time`
@@ -31,11 +39,6 @@ Files to read before making changes (read ALL first):
 - `watcher/github/pkg/watcher_test.go`: test fixtures using `time.Time` and `startTime`
 - `watcher/github/pkg/cursor_test.go`: test fixtures using `time.Time`
 
-Grep-verify libtime symbols before writing:
-```bash
-grep -rn "type DateTime\|func.*DateTime\|CurrentDateTimeGetter" \
-  $(go env GOPATH)/pkg/mod/github.com/bborbe/time@*/... 2>/dev/null | head -20
-```
 </context>
 
 <requirements>
@@ -102,8 +105,8 @@ grep -rn "type DateTime\|func.*DateTime\|CurrentDateTimeGetter" \
 </constraints>
 
 <verification>
-cd watcher/github && grep -rn "time\.Time\|time\.Now()" pkg/ main.go | grep -v "_test.go" | grep -v "time\.RFC3339\|time\.After\|time\.Until\|time\.Duration\|time\.NewTicker\|time\.Second\|time\.Minute"
-# Expected: no matches (all time.Time/time.Now() replaced)
+cd watcher/github && grep -rn "time\.Time\|time\.Now()" pkg/ main.go | grep -v "_test.go" | grep -vE "time\.(RFC3339|Until|Duration|NewTicker|Second|Minute|Hour|Sleep)"
+# Expected: no matches (all time.Time/time.Now() in non-test, non-stdlib-only contexts replaced)
 
 cd watcher/github && make precommit
 </verification>

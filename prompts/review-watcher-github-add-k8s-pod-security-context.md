@@ -20,8 +20,7 @@ Add a `securityContext` block to the StatefulSet container spec in `watcher/gith
 Read `CLAUDE.md` for project conventions.
 
 Files to read before making changes (read ALL first):
-- `watcher/github/k8s/github-pr-watcher-sts.yaml` (full): current container spec without securityContext (~lines 38-86)
-- `agent/pr-reviewer/k8s/` — check if agent-pr-reviewer StatefulSet/Deployment has a security context to use as reference
+- `watcher/github/k8s/github-pr-watcher-sts.yaml` (full): current container spec without securityContext
 </context>
 
 <requirements>
@@ -38,10 +37,14 @@ Files to read before making changes (read ALL first):
          - ALL
    ```
 
-   Place this block directly after the `imagePullPolicy: Always` line (~line 57).
+   Place this block directly after the `imagePullPolicy: Always` line. Anchor by content (find that exact line) — do not rely on a line number.
 
-2. Verify that no other volumeMounts write to the root filesystem:
-   - The only mount is `/data` (the PVC) — this is a volume, not the root filesystem, so `readOnlyRootFilesystem: true` is safe.
+2. Add an `emptyDir` volume mounted at `/tmp` to support any runtime temp-file writes (TLS cert bundles, libgit2 scratch space, sentry queue) under `readOnlyRootFilesystem: true`:
+   - Add to `volumes:`: `- name: tmp` with `emptyDir: {}`
+   - Add to container `volumeMounts:`: `- name: tmp` mounted at `mountPath: /tmp`
+
+3. Verify that no other volumeMounts write to the root filesystem:
+   - The only application mount is `/data` (the PVC) — this is a volume, not the root filesystem, so `readOnlyRootFilesystem: true` is safe.
    - The binary `/main` is baked into the image at build time and only needs to be executed, not written.
 
 3. Do NOT add a pod-level `securityContext` (the container-level is sufficient for these settings).

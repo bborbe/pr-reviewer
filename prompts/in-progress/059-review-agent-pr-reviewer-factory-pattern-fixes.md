@@ -1,6 +1,7 @@
 ---
-status: draft
+status: approved
 created: "2026-04-28T12:00:00Z"
+queued: "2026-04-28T15:24:46Z"
 ---
 
 <summary>
@@ -27,7 +28,8 @@ Files to read before making changes (read ALL first):
 </context>
 
 <requirements>
-1. **`CreateClaudeRunner` — remove the `if ghToken != ""` conditional** (~line 62). Before calling `CreateClaudeRunner`, the caller (`main.go`) must build the env map:
+1. **`CreateClaudeRunner` — remove the `if ghToken != ""` conditional** (~line 62). The factory must accept the already-built env map; routing decisions move to `main.go`:
+
    ```go
    // In main.go — before calling factory.CreateClaudeRunner
    env := map[string]string{}
@@ -36,9 +38,8 @@ Files to read before making changes (read ALL first):
    }
    runner := factory.CreateClaudeRunner(claudeConfigDir, agentDir, model, env, allowedTools)
    ```
-   Change `CreateClaudeRunner` to accept `env map[string]string` directly (or a specific `ghToken string` parameter is acceptable if the env construction is trivially one line — the key requirement is NO conditional inside the factory body).
 
-   The simplest compliant form — accept the already-built env:
+   New `CreateClaudeRunner` signature (the only acceptable form — do NOT keep `ghToken string`):
    ```go
    func CreateClaudeRunner(
        claudeConfigDir claudelib.ClaudeConfigDir,
@@ -69,22 +70,17 @@ Files to read before making changes (read ALL first):
    Remove the conditional and the `glog.V(2).Infof` call from `CreateDeliverer`. The factory function should only construct the sync producer and the Kafka result deliverer — no guards, no log calls.
 
 3. **`CreateAgent` — return an interface instead of `*agentlib.Agent`** (~line 126):
-   Grep the `bborbe/agent/lib` module for an exported `Agent` interface:
-   ```bash
-   grep -rn "type Agent interface\|type AgentRunner interface\|type Runner interface" \
-     $(go env GOPATH)/pkg/mod/github.com/bborbe/agent/lib@*/... 2>/dev/null | head -10
-   ```
-   If an interface exists (e.g. `agentlib.AgentRunner`), change the return type of `CreateAgent` to that interface. If no interface is exported by the library, define a minimal local interface in `pkg/` or `main.go`:
+
+   `agentlib.Agent` is a struct (verified via `go doc github.com/bborbe/agent/lib.Agent`). No exported interface in the library matches its shape. Define a minimal local `AgentRunner` interface in `pkg/factory/` (or wherever the factory lives) that captures the `Run` method, and return that interface:
+
    ```go
+   // pkg/factory/agent_runner.go (or top of factory.go)
    type AgentRunner interface {
-       Run(ctx context.Context, content string, deliverer agentlib.ResultDeliverer) (*agentlib.Result, error)
+       Run(ctx context.Context, phaseName domain.TaskPhase, taskContent string, /* … remaining params from agentlib.Agent.Run … */) (*agentlib.Result, error)
    }
    ```
-   Grep-verify the exact `Run` method signature on `agentlib.Agent` before writing the interface:
-   ```bash
-   grep -n "func.*Agent.*Run\|func.*Run.*context" \
-     $(go env GOPATH)/pkg/mod/github.com/bborbe/agent/lib@*/agent.go 2>/dev/null
-   ```
+
+   The exact `Run` signature is `(ctx context.Context, phaseName domain.TaskPhase, taskContent string, ...) (*Result, error)`. Read `~/go/pkg/mod/github.com/bborbe/agent/lib@<ver>/agent.go` for the full signature and copy it verbatim. Update `CreateAgent` to return `AgentRunner` and update all callers (likely a single caller in `main.go`).
 
 4. **`CreateKafkaResultDeliverer` / `CreateDeliverer` — inject `libtime.CurrentDateTimeGetter` from `main.go`**:
    `libtime.NewCurrentDateTime()` is currently called inside `factory.go` (~line 192). Move this to `main.go`:

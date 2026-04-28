@@ -1,6 +1,7 @@
 ---
-status: draft
+status: approved
 created: "2026-04-28T00:00:00Z"
+queued: "2026-04-28T15:24:46Z"
 ---
 
 <summary>
@@ -33,12 +34,12 @@ Note the exact signature of `RequestIDChannel` — confirm it accepts a `context
 </context>
 
 <requirements>
-1. **Update `kafkaPublisher` struct** in `watcher/github/pkg/publisher.go` to add a `commandCreator` field:
+1. **Update `kafkaPublisher` struct** in `watcher/github/pkg/publisher.go` to add a `commandCreator` field. `base.CommandCreator` is an **interface** in the cqrs library — use the interface type directly, NOT a pointer:
 
    ```go
    type kafkaPublisher struct {
        sender         cdb.CommandObjectSender
-       commandCreator *base.CommandCreator  // or whatever the concrete type is — grep-verify
+       commandCreator base.CommandCreator
    }
    ```
 
@@ -73,10 +74,12 @@ Note the exact signature of `RequestIDChannel` — confirm it accepts a `context
 
 4. **Update call sites** for `buildCommandObject` in `PublishCreate` and `PublishUpdateFrontmatter` to use the method form `p.buildCommandObject(...)`.
 
-5. **Update `watcher/github/pkg/factory/factory.go`** (~line 41): pass `ctx` to `NewCommandPublisher`:
+5. **Update `watcher/github/pkg/factory/factory.go`** (~line 39): pass `ctx` to `NewCommandPublisher`:
    ```go
    return pkg.NewCommandPublisher(ctx, sender), cleanup, nil
    ```
+
+   Confirmed signatures via `go doc`: `RequestIDChannel(ctx) <-chan RequestID`, `NewCommandCreator(<-chan RequestID) CommandCreator` (interface return).
 
 6. **Update `watcher/github/pkg/publisher_test.go`**: pass a `context.Background()` (tests are allowed) or the existing test ctx to `pkg.NewCommandPublisher` in any test setup that constructs the publisher directly.
 

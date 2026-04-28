@@ -20,7 +20,14 @@ Add application-level Prometheus metrics to the `watcher/github` service. The en
 
 <context>
 Read `CLAUDE.md` for project conventions.
-Read `~/.claude/plugins/marketplaces/coding/docs/go-prometheus-metrics-guide.md` for the required metrics pattern (interface, init() registration, pre-initialization, counterfeiter annotation).
+
+Required metrics pattern (summarized inline so the agent has no external dep):
+- Define a `Metrics` interface in `pkg/`
+- Implement with package-level `prometheus.NewCounterVec` / `NewGaugeVec` declared in `var (...)` block
+- Register via `prometheus.MustRegister(...)` in `init()` (never in constructors)
+- Pre-initialize all known label values via `.WithLabelValues(...).Add(0)` in `init()` so `rate()` works from the first scrape
+- The implementation struct is unexported; only the interface and `NewMetrics()` constructor are exported
+- Add a counterfeiter annotation `//counterfeiter:generate ...` for mock generation
 
 Files to read before making changes (read ALL first):
 - `watcher/github/pkg/watcher.go` (full): `NewWatcher` constructor and all paths to instrument
@@ -29,11 +36,6 @@ Files to read before making changes (read ALL first):
 - `watcher/github/pkg/suite_test.go`: test suite file for the mock //go:generate directive location
 - `watcher/github/pkg/watcher_test.go` (full): existing tests to understand what `It` blocks exist and where to add metric assertions
 
-Grep-verify Prometheus symbols:
-```bash
-grep -rn "NewCounterVec\|NewGaugeVec\|MustRegister" \
-  $(go env GOPATH)/pkg/mod/github.com/prometheus/client_golang@*/prometheus/ 2>/dev/null | head -10
-```
 </context>
 
 <requirements>
@@ -104,16 +106,16 @@ grep -rn "NewCounterVec\|NewGaugeVec\|MustRegister" \
    - Add `metrics Metrics` field to `watcher` struct (~line 47)
    - Add `metrics Metrics` parameter to `NewWatcher` constructor (~line 25)
    - Instrument `Poll`:
-     - After `fetchAllPRs` returns `ok=false` due to GitHub error (~line 66): `w.metrics.IncPollCycle("github_error")`
-     - After `fetchAllPRs` returns `ok=false` due to rate limit (in `fetchAllPRs` at ~line 105): `w.metrics.IncPollCycle("rate_limited")`; this requires passing metrics into `fetchAllPRs` or using a bool return to distinguish the two abort reasons. Preferred: have `fetchAllPRs` return a typed abort reason string (e.g. `""` for success, `"github_error"`, `"rate_limited"`) instead of `([]PullRequest, bool)`, and call the right metric in `Poll`.
+     - Change `fetchAllPRs` return type from `([]PullRequest, bool)` to `([]PullRequest, string)` where the string is the abort reason: `""` = success, `"rate_limited"`, or `"github_error"`. The caller in `Poll` uses an empty-string check.
+     - In `Poll`, when `fetchAllPRs` returns a non-empty reason: `w.metrics.IncPollCycle(reason)` and return early (preserving existing transient-error semantics — return nil).
      - After `SaveCursor` on the happy path: `w.metrics.IncPollCycle("success")`
    - Instrument `processPRs` / per-PR handling:
      - In `publishCreate` success: `w.metrics.IncPRPublished("create")`
      - In `publishCreate` error: `w.metrics.IncPRPublished("error")`
      - In `publishForcePush` success: `w.metrics.IncPRPublished("update_frontmatter")`
      - In `publishForcePush` error: `w.metrics.IncPRPublished("error")`
-     - In `handlePR` no-change (skipped) branch: `w.metrics.IncPRPublished("skipped")`
-     - For filtered PRs (`ShouldSkipPR` returns true): `w.metrics.IncPRPublished("skipped")`
+     - For filtered PRs (`ShouldSkipPR` returns true): `w.metrics.IncPRPublished("skipped")` — these are mutually exclusive with create/update; emitted instead of, not in addition to.
+     - The `handlePR` "no-change" branch (PR seen, SHA unchanged) does NOT increment any counter (it represents a no-op poll, not a published event).
 
 5. **Update `watcher/github/pkg/factory/factory.go`**:
    - Add `pkg.NewMetrics()` construction in `CreateWatcher`

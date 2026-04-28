@@ -1,6 +1,7 @@
 ---
-status: draft
+status: approved
 created: "2026-04-28T00:00:00Z"
+queued: "2026-04-28T15:24:46Z"
 ---
 
 <summary>
@@ -19,14 +20,12 @@ Move `ParseBotAllowlist` from `pkg/factory/factory.go` to `pkg/filter.go`, log t
 
 <context>
 Read `CLAUDE.md` for project conventions.
-Read `~/.claude/plugins/marketplaces/coding/docs/go-factory-pattern.md` for the zero-logic factory rule.
 
 Files to read before making changes (read ALL first):
-- `watcher/github/pkg/factory/factory.go` (full): `ParseBotAllowlist` (~lines 76-89), `syncProducer.Close()` cleanup (~lines 36-39), `pollInterval` parameter (~line 52)
+- `watcher/github/pkg/factory/factory.go` (full): `ParseBotAllowlist` (~lines 73-86), `syncProducer.Close()` cleanup (~lines 35-38), `pollInterval` parameter in `CreateWatcher`
 - `watcher/github/pkg/filter.go` (full): `ShouldSkipPR` and `IsBotAuthor` — `ParseBotAllowlist` will be added here
-- `watcher/github/pkg/filter_test.go` (full): existing tests to understand the test pattern for this package
-- `watcher/github/pkg/suite_test.go`: Ginkgo suite file pattern to replicate for the factory package
-- `watcher/github/main.go` (~line 53): `factory.ParseBotAllowlist` call site — must be updated to `pkg.ParseBotAllowlist`
+- `watcher/github/pkg/filter_test.go` (full): existing tests for filter functions — pattern to follow for new tests
+- `watcher/github/main.go`: `factory.ParseBotAllowlist` call site (~line 53), and `runPollLoop`/`pollInterval` usage
 </context>
 
 <requirements>
@@ -43,41 +42,14 @@ Files to read before making changes (read ALL first):
    - Replace `_ = err` with `glog.Warningf("close kafka sync producer: %v", err)`
    - Add `"github.com/golang/glog"` to imports if not already present
 
-4. **Remove unused `pollInterval time.Duration` parameter from `CreateWatcher`** (~line 52 of factory.go):
+4. **Remove unused `pollInterval time.Duration` parameter from `CreateWatcher`** in factory.go:
    - Remove the parameter from the function signature
-   - Remove it from the call site in `main.go` (~line 63 — `pollInterval` arg passed to `CreateWatcher`)
+   - In `main.go`, the local `pollInterval` variable is still used by `runPollLoop` — keep it. Only remove `pollInterval` from the argument list passed to `factory.CreateWatcher`.
    - Remove the `"time"` import from `factory.go` if it is only used for this parameter
 
-5. **Create `watcher/github/pkg/factory/factory_suite_test.go`** following the exact pattern of `watcher/github/pkg/suite_test.go`:
-   ```go
-   // Copyright (c) 2026 Benjamin Borbe All rights reserved.
-   // Use of this source code is governed by a BSD-style
-   // license that can be found in the LICENSE file.
+5. **Add tests for `ParseBotAllowlist` in `watcher/github/pkg/filter_test.go`** (its new location). The factory package becomes a no-logic wiring layer with no tests — do NOT create `pkg/factory/factory_suite_test.go` or `factory_test.go`.
 
-   package factory_test
-
-   import (
-       "testing"
-       "time"
-
-       . "github.com/onsi/ginkgo/v2"
-       . "github.com/onsi/gomega"
-       "github.com/onsi/gomega/format"
-   )
-
-   func TestSuite(t *testing.T) {
-       time.Local = time.UTC
-       format.TruncatedDiff = false
-       RegisterFailHandler(Fail)
-       suiteConfig, reporterConfig := GinkgoConfiguration()
-       suiteConfig.Timeout = 60 * time.Second
-       RunSpecs(t, "Factory Suite", suiteConfig, reporterConfig)
-   }
-   ```
-
-6. **Create `watcher/github/pkg/factory/factory_test.go`** with tests for `ParseBotAllowlist` (now in `pkg/`, not `factory/`). Since `ParseBotAllowlist` has moved to `pkg/`, these tests should be in `pkg/filter_test.go` instead. Add them there:
-
-   In `watcher/github/pkg/filter_test.go`, add a `Describe("ParseBotAllowlist")` block covering:
+   Append a `Describe("ParseBotAllowlist")` block to `pkg/filter_test.go` covering:
    - Empty string input → returns nil
    - Single entry → returns `[]string{"entry"}`
    - Multiple comma-separated entries → returns slice of all
