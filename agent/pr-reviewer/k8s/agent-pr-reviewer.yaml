@@ -12,12 +12,12 @@ spec:
   volumeClaim: agent-pr-reviewer
   volumeMountPath: /home/claude/.claude
   trigger:
+    statuses:
+      - in_progress
     phases:
       - planning
       - in_progress
       - ai_review
-    statuses:
-      - in_progress
   resources:
     requests:
       cpu: 500m
