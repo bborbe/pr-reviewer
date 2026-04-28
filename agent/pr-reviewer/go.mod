@@ -12,7 +12,7 @@ replace (
 )
 
 require (
-	github.com/bborbe/agent/lib v0.54.0
+	github.com/bborbe/agent/lib v0.56.0
 	github.com/bborbe/cqrs v0.3.4
 	github.com/bborbe/errors v1.5.10
 	github.com/bborbe/kafka v1.22.11
