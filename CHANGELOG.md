@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.16.9
+
+- chore: add tools.go to watcher/github to pin tool dependencies and prevent go mod tidy from dropping them
+
 ## v0.16.8
 
 - fix: watcher/github pkg suite uses GinkgoConfiguration() with 60s timeout; replace time.Now() with fixed date in test fixtures for determinism

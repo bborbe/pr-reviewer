@@ -18,7 +18,7 @@ Add branch-name validation before any `git checkout` call to prevent argument in
 Read `CLAUDE.md` for project conventions.
 
 Files to read before making changes (read ALL first):
-- `agent/pr-reviewer/pkg/git/git.go` — `Clone` (~line 40), `Checkout` (~line 80), `validateRepoPath` (~line 120), all `fmt.Errorf` calls at ~lines 82, 94, 96, 125, 132, 138, 163
+- `agent/pr-reviewer/pkg/git/git.go` — `CreateClone` (~line 56) which contains an inline `git checkout` invocation (~line 85–96), `validateRepoPath` (~line 121), all `fmt.Errorf` calls at lines 82, 94, 96, 125, 132, 138, 163. Note: there is no separate `Checkout` method — the checkout step is inline within `CreateClone`.
 - `agent/pr-reviewer/pkg/git/git_test.go` — existing test patterns; note that success-path tests for `Clone` require a real `git` binary
 - `agent/pr-reviewer/pkg/git/git_suite_test.go` — suite setup
 </context>
@@ -42,10 +42,10 @@ Files to read before making changes (read ALL first):
    ```
    Import `regexp` and `strings` as needed.
 
-2. **Call `isValidBranchName` before the `git checkout` step in `Clone` or `Checkout`** (~line 80–96, wherever `git checkout origin/<branch>` is invoked). Return an error immediately if the branch is invalid:
+2. **Call `isValidBranchName` at the top of `CreateClone`** (before any subprocess invocation, ~line 56). The `branch` parameter is the value to validate. Return early if invalid:
    ```go
    if !isValidBranchName(branch) {
-       return errors.Errorf(ctx, "invalid branch name: %s", branch)
+       return "", errors.Errorf(ctx, "invalid branch name: %s", branch)
    }
    ```
 
@@ -65,7 +65,7 @@ Files to read before making changes (read ALL first):
    ```
    Use `DescribeTable` / `Entry` following the project's Ginkgo/Gomega test conventions.
 
-5. **Add a test for the branch-validation guard in `Clone`/`Checkout`**: pass a branch name starting with `-` and assert a non-nil error is returned before any git subprocess is invoked.
+5. **Add a test for the branch-validation guard in `CreateClone`**: pass a branch name starting with `-` and assert a non-nil error is returned before any git subprocess is invoked.
 
 6. **Run `cd agent/pr-reviewer && make test`** — must pass.
 </requirements>

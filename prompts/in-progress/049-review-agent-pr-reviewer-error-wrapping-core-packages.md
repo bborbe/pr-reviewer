@@ -1,6 +1,7 @@
 ---
-status: draft
+status: approved
 created: "2026-04-28T12:00:00Z"
+queued: "2026-04-28T14:52:29Z"
 ---
 
 <summary>
@@ -36,15 +37,22 @@ Files to read before making changes (read ALL first):
 
 2. **`pkg/github/client.go`** — Replace all `fmt.Errorf` calls (~lines 77, 82, 117, 134, 162) with `errors.Wrapf(ctx, err, "...")` or `errors.Errorf(ctx, "...")`. All `Client` methods receive `ctx context.Context`.
 
-3. **`pkg/config/config.go`**:
-   a. Replace `log.Printf(...)` (~line 149) with `glog.Warningf(...)`. Remove the `"log"` import; add `"github.com/golang/glog"` if not already imported.
-   b. Replace the 3 `fmt.Errorf` calls in `validateConfig` (~lines 183, 199, 217) with `errors.Errorf(ctx, "...")`. Thread `ctx context.Context` into `validateConfig` if it does not already have it (the caller `fileLoader.Load` receives `ctx`).
+3. **`pkg/config/config.go`** — three sites have `fmt.Errorf`, only the first is in `validateConfig`:
+   a. Replace `log.Printf(...)` (~line 149) with `glog.Warningf(...)`. Remove the `"log"` import; `"github.com/golang/glog"` should already be imported elsewhere.
+   b. Line 183 (`validateConfig`): replace `fmt.Errorf(...)` with `errors.Errorf(ctx, "...")`. Thread `ctx context.Context` as the first parameter of `validateConfig`; its caller `fileLoader.Load` already has `ctx`.
+   c. Line 199 (`FindRepoPath`) and line 217 (`FindRepo`): both methods currently have signature `func (c *Config) FindRepoPath(repoURL string) (string, error)` / `FindRepo(repoURL string) (*RepoInfo, error)`. Add `ctx context.Context` as the first parameter, replace the `fmt.Errorf` with `errors.Errorf(ctx, "...")`. Update all callers:
+      - `agent/pr-reviewer/cmd/cli/main.go:83` (`cfg.FindRepo(prInfo.RepoURL)` → pass `ctx`)
+      - `agent/pr-reviewer/pkg/config/config_test.go:509` (`cfg.FindRepoPath(repoURL)` → pass `ctx`)
+      - `agent/pr-reviewer/pkg/config/config_test.go:612` (`cfg.FindRepo(repoURL)` → pass `ctx`)
+   These are the only three callers in the repo; verify with `grep -rn "FindRepoPath\\|FindRepo(" agent/pr-reviewer --include="*.go"`.
 
-4. **`pkg/steps/review.go`** — Thread `ctx` into the private helpers:
-   a. Add `ctx context.Context` as the first parameter to `extractVerdict(ctx context.Context, output string) (string, error)` and `lastJSONBlock(ctx context.Context, s string) (string, error)`.
-   b. Update the call site in `Run` (~line 81) to pass `ctx`.
-   c. Replace `fmt.Errorf` at ~lines 131 and 134 with `errors.Errorf(ctx, "...")` / `errors.Wrapf(ctx, err, "...")`.
-   d. Update `export_test.go` and any direct test calls to `extractVerdict`/`lastJSONBlock` to pass a `context.Background()` (tests may use `context.Background()` — that is allowed in test code).
+4. **`pkg/steps/review.go`** — Thread `ctx` into the private helpers (preserve existing return types):
+   a. Current signatures: `extractVerdict(raw string) (verdictPayload, error)` and `lastJSONBlock(s string) (string, bool)`. Change to:
+      - `extractVerdict(ctx context.Context, raw string) (verdictPayload, error)`
+      - `lastJSONBlock(ctx context.Context, s string) (string, bool)` — return type stays `(string, bool)`; do NOT change to error.
+   b. Update the call site in `Run` (~line 81): pass `ctx` to `extractVerdict`.
+   c. Inside `extractVerdict`, replace any `fmt.Errorf` with `errors.Errorf(ctx, "...")` / `errors.Wrapf(ctx, err, "...")`.
+   d. Update `export_test.go` and any direct test calls to `extractVerdict`/`lastJSONBlock` to pass `context.Background()`.
 
 5. **Run `cd agent/pr-reviewer && make test`** — must pass after changes.
 </requirements>

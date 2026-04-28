@@ -1,6 +1,7 @@
 ---
-status: draft
+status: approved
 created: "2026-04-28T12:00:00Z"
+queued: "2026-04-28T14:52:29Z"
 ---
 
 <summary>
@@ -25,9 +26,9 @@ Files to read before making changes (read ALL first):
 </context>
 
 <requirements>
-1. **Update `prurl.Parse` signature** to accept `ctx context.Context` as first parameter:
+1. **Update `prurl.Parse` signature** to accept `ctx context.Context` as first parameter (return type is unchanged — `*PRInfo`, not `PRInfo`):
    ```go
-   func Parse(ctx context.Context, rawURL string) (PRInfo, error)
+   func Parse(ctx context.Context, rawURL string) (*PRInfo, error)
    ```
 
 2. **Thread `ctx` through internal helpers** `parseGitHub` and `parseBitbucket` by adding `ctx context.Context` as first parameter to each and updating their call sites in `Parse`.
@@ -36,7 +37,9 @@ Files to read before making changes (read ALL first):
 
 4. **Update `prurl_test.go`**: every call to `prurl.Parse(...)` must become `prurl.Parse(context.Background(), ...)`. Add `"context"` import. Tests may use `context.Background()` — this is correct for test code.
 
-5. **Update callers in `cmd/cli/main.go`**: find all calls to `prurl.Parse(...)` and add the `ctx` parameter from the surrounding function. The `run` function has `ctx context.Context` available via `signal.NotifyContext`.
+5. **Update the single caller in `cmd/cli/main.go`** (~line 68): find the call to `prurl.Parse(...)` and add `ctx` as first parameter from the surrounding `run` function (which has `ctx context.Context` via `signal.NotifyContext`). Verified there is only one caller in the repo.
+
+   Imports: ensure `"github.com/bborbe/errors"` is imported in `prurl.go` (do not alias-collide with stdlib `errors`).
 
 6. **Run `cd agent/pr-reviewer && make test`** — must pass.
 </requirements>
