@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Fixed six GoDoc comments in watcher/github/pkg to start with the declared item name, and created pkg/doc.go with a package-level documentation comment.
 container: code-reviewer-044-review-watcher-github-fix-godoc-comments
 dark-factory-version: v0.135.19-1-gc08c946
 created: "2026-04-28T00:00:00Z"
 queued: "2026-04-28T14:51:25Z"
 started: "2026-04-28T14:54:21Z"
+completed: "2026-04-28T14:57:37Z"
 ---
 
 <summary>
