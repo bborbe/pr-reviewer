@@ -7,8 +7,6 @@ package factory
 
 import (
 	"context"
-	"strings"
-	"time"
 
 	"github.com/bborbe/cqrs/base"
 	"github.com/bborbe/cqrs/cdb"
@@ -16,6 +14,7 @@ import (
 	libkafka "github.com/bborbe/kafka"
 	"github.com/bborbe/log"
 	libtime "github.com/bborbe/time"
+	"github.com/golang/glog"
 
 	"github.com/bborbe/code-reviewer/watcher/github/pkg"
 )
@@ -34,7 +33,7 @@ func CreateKafkaPublisher(
 	sender := cdb.NewCommandObjectSender(syncProducer, branch, log.DefaultSamplerFactory)
 	cleanup := func() {
 		if err := syncProducer.Close(); err != nil {
-			_ = err
+			glog.Warningf("close kafka sync producer: %v", err)
 		}
 	}
 	return pkg.NewCommandPublisher(sender), cleanup, nil
@@ -48,7 +47,6 @@ func CreateWatcher(
 	stage string,
 	repoScope string,
 	botAllowlist []string,
-	pollInterval time.Duration,
 	startTime libtime.DateTime,
 ) (pkg.Watcher, func(), error) {
 	branch := base.Branch(stage)
@@ -68,20 +66,4 @@ func CreateWatcher(
 		stage,
 	)
 	return w, cleanup, nil
-}
-
-// ParseBotAllowlist splits a comma-separated allowlist string into a slice.
-func ParseBotAllowlist(raw string) []string {
-	if raw == "" {
-		return nil
-	}
-	parts := strings.Split(raw, ",")
-	result := make([]string, 0, len(parts))
-	for _, p := range parts {
-		p = strings.TrimSpace(p)
-		if p != "" {
-			result = append(result, p)
-		}
-	}
-	return result
 }

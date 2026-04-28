@@ -65,7 +65,7 @@ func (a *application) Run(ctx context.Context, _ libsentry.Client) error {
 		return errors.Wrapf(ctx, err, "parse poll interval %q", a.PollInterval)
 	}
 
-	botAllowlist := factory.ParseBotAllowlist(a.BotAllowlist)
+	botAllowlist := pkg.ParseBotAllowlist(a.BotAllowlist)
 	startTime := libtime.NewCurrentDateTime().Now()
 
 	w, cleanup, err := factory.CreateWatcher(
@@ -75,7 +75,6 @@ func (a *application) Run(ctx context.Context, _ libsentry.Client) error {
 		a.Stage,
 		a.RepoScope,
 		botAllowlist,
-		pollInterval,
 		startTime,
 	)
 	if err != nil {
