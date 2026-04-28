@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Migrated all fmt.Errorf calls in pkg/review, pkg/github/client.go, pkg/config/config.go, and pkg/steps/review.go to errors.Wrapf/Errorf(ctx,...), replaced log.Printf with glog.Warningf, and threaded ctx through validateConfig, FindRepo, extractVerdict, and lastJSONBlock.
 container: code-reviewer-049-review-agent-pr-reviewer-error-wrapping-core-packages
 dark-factory-version: v0.135.19-1-gc08c946
 created: "2026-04-28T12:00:00Z"
 queued: "2026-04-28T14:52:29Z"
 started: "2026-04-28T15:41:48Z"
+completed: "2026-04-28T15:47:06Z"
 ---
 
 <summary>
