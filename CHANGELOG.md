@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.17.1
+
+- chore: add container securityContext to `watcher/github` StatefulSet — runAsNonRoot, runAsUser 65534, allowPrivilegeEscalation false, readOnlyRootFilesystem true, drop ALL capabilities; add emptyDir /tmp volume for runtime scratch space
+
 ## v0.17.0
 
 - feat: add Prometheus metrics to `watcher/github` — poll cycle counter (`github_pr_watcher_poll_cycles_total`) and PR-processed counter (`github_pr_watcher_prs_total`) with pre-initialized label values; inject `Metrics` interface into `Watcher` via constructor

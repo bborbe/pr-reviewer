@@ -55,6 +55,14 @@ spec:
               value: '{{"SENTRY_PROXY_URL" | env}}'
           image: '{{"DOCKER_REGISTRY" | env}}/github-pr-watcher:{{"BRANCH" | env}}'
           imagePullPolicy: Always
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           livenessProbe:
             failureThreshold: 5
             httpGet:
@@ -84,8 +92,13 @@ spec:
           volumeMounts:
             - mountPath: /data
               name: datadir
+            - mountPath: /tmp
+              name: tmp
       imagePullSecrets:
         - name: docker
+      volumes:
+        - name: tmp
+          emptyDir: {}
   updateStrategy:
     type: RollingUpdate
   volumeClaimTemplates:
