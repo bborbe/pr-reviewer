@@ -15,6 +15,7 @@ import (
 	"github.com/bborbe/errors"
 	libkafka "github.com/bborbe/kafka"
 	"github.com/bborbe/log"
+	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/code-reviewer/watcher/github/pkg"
 )
@@ -48,7 +49,7 @@ func CreateWatcher(
 	repoScope string,
 	botAllowlist []string,
 	pollInterval time.Duration,
-	startTime time.Time,
+	startTime libtime.DateTime,
 ) (pkg.Watcher, func(), error) {
 	branch := base.Branch(stage)
 	pub, cleanup, err := CreateKafkaPublisher(ctx, brokers, branch)

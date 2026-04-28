@@ -12,6 +12,7 @@ import (
 	"time"
 
 	agentlib "github.com/bborbe/agent/lib"
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -23,7 +24,7 @@ func newTestWatcher(
 	ghClient pkg.GitHubClient,
 	pub *mocks.CommandPublisher,
 	cursorPath string,
-	startTime time.Time,
+	startTime libtime.DateTime,
 ) pkg.Watcher {
 	return pkg.NewWatcher(
 		ghClient,
@@ -44,14 +45,14 @@ var _ = Describe("pkg.Watcher", func() {
 		pub        *mocks.CommandPublisher
 		tmpDir     string
 		cursorPath string
-		startTime  time.Time
+		startTime  libtime.DateTime
 	)
 
 	BeforeEach(func() {
 		ctx, cancel = context.WithCancel(context.Background())
 		ghClient = new(mocks.GitHubClient)
 		pub = new(mocks.CommandPublisher)
-		startTime = time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+		startTime = libtime.DateTime(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
 		var err error
 		tmpDir, err = os.MkdirTemp("", "watcher-test-*")
 		Expect(err).NotTo(HaveOccurred())
@@ -91,7 +92,7 @@ var _ = Describe("pkg.Watcher", func() {
 				HTMLURL:     "https://github.com/bborbe/code-reviewer/pull/42",
 				AuthorLogin: "alice",
 				IsDraft:     false,
-				UpdatedAt:   time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC),
+				UpdatedAt:   libtime.DateTime(time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)),
 			}
 			ghClient.SearchPRsReturns(pkg.SearchResult{
 				PullRequests:  []pkg.PullRequest{pr},
@@ -122,7 +123,7 @@ var _ = Describe("pkg.Watcher", func() {
 				Repo:        "code-reviewer",
 				Title:       "existing pr",
 				AuthorLogin: "alice",
-				UpdatedAt:   time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC),
+				UpdatedAt:   libtime.DateTime(time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)),
 			}
 			ghClient.SearchPRsReturns(pkg.SearchResult{
 				PullRequests:  []pkg.PullRequest{pr},
@@ -155,7 +156,7 @@ var _ = Describe("pkg.Watcher", func() {
 				Repo:        "code-reviewer",
 				Title:       "force pushed pr",
 				AuthorLogin: "alice",
-				UpdatedAt:   time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC),
+				UpdatedAt:   libtime.DateTime(time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)),
 			}
 
 			// First poll: register initial SHA
@@ -195,7 +196,7 @@ var _ = Describe("pkg.Watcher", func() {
 				Repo:        "repo",
 				AuthorLogin: "alice",
 				IsDraft:     true,
-				UpdatedAt:   fixedNow,
+				UpdatedAt:   libtime.DateTime(fixedNow),
 			}
 			ghClient.SearchPRsReturns(pkg.SearchResult{
 				PullRequests:  []pkg.PullRequest{pr},
@@ -218,7 +219,7 @@ var _ = Describe("pkg.Watcher", func() {
 				Repo:        "repo",
 				AuthorLogin: "dependabot[bot]",
 				IsDraft:     false,
-				UpdatedAt:   fixedNow,
+				UpdatedAt:   libtime.DateTime(fixedNow),
 			}
 			ghClient.SearchPRsReturns(pkg.SearchResult{
 				PullRequests:  []pkg.PullRequest{pr},
@@ -253,7 +254,7 @@ var _ = Describe("pkg.Watcher", func() {
 				Owner:       "bborbe",
 				Repo:        "repo",
 				AuthorLogin: "alice",
-				UpdatedAt:   time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC),
+				UpdatedAt:   libtime.DateTime(time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)),
 			}
 			ghClient.SearchPRsReturns(pkg.SearchResult{
 				PullRequests:  []pkg.PullRequest{pr},
@@ -282,7 +283,7 @@ var _ = Describe("pkg.Watcher", func() {
 			cancelCtx, cancelFn := context.WithCancel(context.Background())
 
 			callCount := 0
-			ghClient.SearchPRsStub = func(c context.Context, scope string, since time.Time, page int) (pkg.SearchResult, error) {
+			ghClient.SearchPRsStub = func(c context.Context, scope string, since libtime.DateTime, page int) (pkg.SearchResult, error) {
 				callCount++
 				if callCount == 1 {
 					cancelFn() // cancel context after first page
@@ -340,7 +341,7 @@ var _ = Describe("pkg.Watcher", func() {
 					Owner:       "bborbe",
 					Repo:        "repo",
 					AuthorLogin: "alice",
-					UpdatedAt:   fixedNow,
+					UpdatedAt:   libtime.DateTime(fixedNow),
 				},
 			}
 			ghClient.SearchPRsReturns(pkg.SearchResult{
@@ -365,7 +366,7 @@ var _ = Describe("pkg.Watcher", func() {
 				Repo:        "repo",
 				Title:       "my title",
 				AuthorLogin: "alice",
-				UpdatedAt:   fixedNow,
+				UpdatedAt:   libtime.DateTime(fixedNow),
 			}
 			ghClient.SearchPRsReturns(pkg.SearchResult{
 				PullRequests:  []pkg.PullRequest{pr},
@@ -396,7 +397,7 @@ var _ = Describe("pkg.Watcher", func() {
 				Owner:       "bborbe",
 				Repo:        "repo",
 				AuthorLogin: "alice",
-				UpdatedAt:   time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC),
+				UpdatedAt:   libtime.DateTime(time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)),
 			}
 
 			// First poll: create

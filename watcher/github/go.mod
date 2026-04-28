@@ -21,6 +21,7 @@ require (
 	github.com/bborbe/run v1.9.18
 	github.com/bborbe/sentry v1.9.15
 	github.com/bborbe/service v1.9.9
+	github.com/bborbe/time v1.25.9
 	github.com/golang/glog v1.2.5
 	github.com/golangci/golangci-lint/v2 v2.11.4
 	github.com/google/addlicense v1.2.0
@@ -111,7 +112,6 @@ require (
 	github.com/bborbe/math v1.3.7 // indirect
 	github.com/bborbe/parse v1.10.10 // indirect
 	github.com/bborbe/strimzi v1.8.2 // indirect
-	github.com/bborbe/time v1.25.9 // indirect
 	github.com/bborbe/validation v1.4.11 // indirect
 	github.com/bborbe/vault-cli v0.55.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect

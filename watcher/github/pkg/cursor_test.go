@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -20,12 +21,12 @@ var _ = Describe("pkg.Cursor", func() {
 	var (
 		ctx       context.Context
 		tmpDir    string
-		startTime time.Time
+		startTime libtime.DateTime
 	)
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		startTime = time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+		startTime = libtime.DateTime(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
 		var err error
 		tmpDir, err = os.MkdirTemp("", "cursor-test-*")
 		Expect(err).NotTo(HaveOccurred())
@@ -60,7 +61,7 @@ var _ = Describe("pkg.Cursor", func() {
 
 		Context("file has valid JSON", func() {
 			It("returns correct state", func() {
-				ts := time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC)
+				ts := libtime.DateTime(time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC))
 				stored := pkg.Cursor{
 					LastUpdatedAt: ts,
 					HeadSHAs:      map[string]string{"abc": "sha1"},
@@ -102,7 +103,7 @@ var _ = Describe("pkg.Cursor", func() {
 	Describe("Save then Load round-trip", func() {
 		It("preserves state", func() {
 			path := filepath.Join(tmpDir, "roundtrip.json")
-			ts := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+			ts := libtime.DateTime(time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC))
 			stored := pkg.Cursor{
 				LastUpdatedAt: ts,
 				HeadSHAs:      map[string]string{"key1": "sha-abc", "key2": "sha-def"},
@@ -119,7 +120,7 @@ var _ = Describe("pkg.Cursor", func() {
 	Describe("Load then Save preserves HeadSHAs", func() {
 		It("existing entries are preserved", func() {
 			path := filepath.Join(tmpDir, "preserve.json")
-			ts := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
+			ts := libtime.DateTime(time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC))
 			initial := pkg.Cursor{
 				LastUpdatedAt: ts,
 				HeadSHAs:      map[string]string{"pr-1": "sha-orig"},

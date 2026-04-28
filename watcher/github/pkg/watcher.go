@@ -7,10 +7,10 @@ package pkg
 import (
 	"context"
 	"fmt"
-	"time"
 
 	agentlib "github.com/bborbe/agent/lib"
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 	"github.com/golang/glog"
 )
 
@@ -26,7 +26,7 @@ func NewWatcher(
 	ghClient GitHubClient,
 	pub CommandPublisher,
 	cursorPath string,
-	startTime time.Time,
+	startTime libtime.DateTime,
 	scope string,
 	botAllowlist []string,
 	stage string,
@@ -46,7 +46,7 @@ type watcher struct {
 	ghClient     GitHubClient
 	publisher    CommandPublisher
 	cursorPath   string
-	startTime    time.Time
+	startTime    libtime.DateTime
 	scope        string
 	botAllowlist []string
 	stage        string
@@ -80,7 +80,7 @@ func (w *watcher) Poll(ctx context.Context) error {
 // (nil, false) if the caller should abort the poll cycle.
 func (w *watcher) fetchAllPRs(
 	ctx context.Context,
-	since time.Time,
+	since libtime.DateTime,
 ) ([]PullRequest, bool) {
 	page := 1
 	var allPRs []PullRequest
@@ -113,7 +113,7 @@ func (w *watcher) processPRs(
 	ctx context.Context,
 	cursorState Cursor,
 	allPRs []PullRequest,
-) time.Time {
+) libtime.DateTime {
 	since := cursorState.LastUpdatedAt
 	maxUpdatedAt := since
 	headSHACache := make(map[string]string)

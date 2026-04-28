@@ -19,6 +19,7 @@ import (
 	"github.com/bborbe/run"
 	libsentry "github.com/bborbe/sentry"
 	"github.com/bborbe/service"
+	libtime "github.com/bborbe/time"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -65,7 +66,7 @@ func (a *application) Run(ctx context.Context, _ libsentry.Client) error {
 	}
 
 	botAllowlist := factory.ParseBotAllowlist(a.BotAllowlist)
-	startTime := time.Now().UTC()
+	startTime := libtime.NewCurrentDateTime().Now()
 
 	w, cleanup, err := factory.CreateWatcher(
 		ctx,

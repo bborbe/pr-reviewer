@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.16.20
+
+- refactor: replace `time.Time` with `libtime.DateTime` in `watcher/github` struct fields and function signatures, inject `libtime.CurrentDateTimeGetter` in `main.go` instead of calling `time.Now()` directly
+
 ## v0.16.19
 
 - fix: add 30s timeout to Bitbucket HTTP client to prevent slow-server goroutine exhaustion

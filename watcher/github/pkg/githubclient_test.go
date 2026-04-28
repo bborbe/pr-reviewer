@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"time"
 
+	libtime "github.com/bborbe/time"
 	gogithub "github.com/google/go-github/v62/github"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -84,7 +85,12 @@ var _ = Describe("pkg.GitHubClient", func() {
 				defer server.Close()
 
 				client := buildClient(server)
-				result, err := client.SearchPRs(ctx, "owner", fixedNow.Add(-24*time.Hour), 1)
+				result, err := client.SearchPRs(
+					ctx,
+					"owner",
+					libtime.DateTime(fixedNow.Add(-24*time.Hour)),
+					1,
+				)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result.PullRequests).To(HaveLen(2))
 				Expect(result.HasNextPage).To(BeFalse())
@@ -161,7 +167,12 @@ var _ = Describe("pkg.GitHubClient", func() {
 
 				client := buildClient(server)
 
-				result1, err := client.SearchPRs(ctx, "org", fixedNow.Add(-24*time.Hour), 1)
+				result1, err := client.SearchPRs(
+					ctx,
+					"org",
+					libtime.DateTime(fixedNow.Add(-24*time.Hour)),
+					1,
+				)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result1.HasNextPage).To(BeTrue())
 				Expect(result1.NextPage).To(Equal(2))
@@ -170,7 +181,7 @@ var _ = Describe("pkg.GitHubClient", func() {
 				result2, err := client.SearchPRs(
 					ctx,
 					"org",
-					fixedNow.Add(-24*time.Hour),
+					libtime.DateTime(fixedNow.Add(-24*time.Hour)),
 					result1.NextPage,
 				)
 				Expect(err).NotTo(HaveOccurred())
@@ -194,7 +205,12 @@ var _ = Describe("pkg.GitHubClient", func() {
 				defer server.Close()
 
 				client := buildClient(server)
-				result, err := client.SearchPRs(ctx, "org", fixedNow.Add(-time.Hour), 1)
+				result, err := client.SearchPRs(
+					ctx,
+					"org",
+					libtime.DateTime(fixedNow.Add(-time.Hour)),
+					1,
+				)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result.RateRemaining).To(Equal(5))
 				Expect(result.RateResetAt.Unix()).To(Equal(resetTime.Unix()))
@@ -216,7 +232,12 @@ var _ = Describe("pkg.GitHubClient", func() {
 				defer server.Close()
 
 				client := buildClient(server)
-				_, err := client.SearchPRs(ctx, "org", fixedNow.Add(-time.Hour), 1)
+				_, err := client.SearchPRs(
+					ctx,
+					"org",
+					libtime.DateTime(fixedNow.Add(-time.Hour)),
+					1,
+				)
 				Expect(err).To(HaveOccurred())
 			})
 		})
@@ -236,7 +257,12 @@ var _ = Describe("pkg.GitHubClient", func() {
 				cancelFn()
 
 				client := buildClient(server)
-				_, err := client.SearchPRs(cancelledCtx, "org", fixedNow.Add(-time.Hour), 1)
+				_, err := client.SearchPRs(
+					cancelledCtx,
+					"org",
+					libtime.DateTime(fixedNow.Add(-time.Hour)),
+					1,
+				)
 				Expect(err).To(HaveOccurred())
 			})
 		})

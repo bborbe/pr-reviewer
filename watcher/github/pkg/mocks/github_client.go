@@ -4,9 +4,9 @@ package mocks
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/bborbe/code-reviewer/watcher/github/pkg"
+	"github.com/bborbe/time"
 )
 
 type GitHubClient struct {
@@ -26,12 +26,12 @@ type GitHubClient struct {
 		result1 string
 		result2 error
 	}
-	SearchPRsStub        func(context.Context, string, time.Time, int) (pkg.SearchResult, error)
+	SearchPRsStub        func(context.Context, string, time.DateTime, int) (pkg.SearchResult, error)
 	searchPRsMutex       sync.RWMutex
 	searchPRsArgsForCall []struct {
 		arg1 context.Context
 		arg2 string
-		arg3 time.Time
+		arg3 time.DateTime
 		arg4 int
 	}
 	searchPRsReturns struct {
@@ -113,13 +113,13 @@ func (fake *GitHubClient) GetHeadSHAReturnsOnCall(i int, result1 string, result2
 	}{result1, result2}
 }
 
-func (fake *GitHubClient) SearchPRs(arg1 context.Context, arg2 string, arg3 time.Time, arg4 int) (pkg.SearchResult, error) {
+func (fake *GitHubClient) SearchPRs(arg1 context.Context, arg2 string, arg3 time.DateTime, arg4 int) (pkg.SearchResult, error) {
 	fake.searchPRsMutex.Lock()
 	ret, specificReturn := fake.searchPRsReturnsOnCall[len(fake.searchPRsArgsForCall)]
 	fake.searchPRsArgsForCall = append(fake.searchPRsArgsForCall, struct {
 		arg1 context.Context
 		arg2 string
-		arg3 time.Time
+		arg3 time.DateTime
 		arg4 int
 	}{arg1, arg2, arg3, arg4})
 	stub := fake.SearchPRsStub
@@ -141,13 +141,13 @@ func (fake *GitHubClient) SearchPRsCallCount() int {
 	return len(fake.searchPRsArgsForCall)
 }
 
-func (fake *GitHubClient) SearchPRsCalls(stub func(context.Context, string, time.Time, int) (pkg.SearchResult, error)) {
+func (fake *GitHubClient) SearchPRsCalls(stub func(context.Context, string, time.DateTime, int) (pkg.SearchResult, error)) {
 	fake.searchPRsMutex.Lock()
 	defer fake.searchPRsMutex.Unlock()
 	fake.SearchPRsStub = stub
 }
 
-func (fake *GitHubClient) SearchPRsArgsForCall(i int) (context.Context, string, time.Time, int) {
+func (fake *GitHubClient) SearchPRsArgsForCall(i int) (context.Context, string, time.DateTime, int) {
 	fake.searchPRsMutex.RLock()
 	defer fake.searchPRsMutex.RUnlock()
 	argsForCall := fake.searchPRsArgsForCall[i]

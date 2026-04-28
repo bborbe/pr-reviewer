@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 	gogithub "github.com/google/go-github/v62/github"
 )
 
@@ -25,7 +26,7 @@ type PullRequest struct {
 	HeadSHA     string
 	AuthorLogin string
 	IsDraft     bool
-	UpdatedAt   time.Time
+	UpdatedAt   libtime.DateTime
 }
 
 // SearchResult is the result of a single paginated search call.
@@ -34,7 +35,7 @@ type SearchResult struct {
 	HasNextPage   bool
 	NextPage      int
 	RateRemaining int
-	RateResetAt   time.Time
+	RateResetAt   libtime.DateTime
 }
 
 //counterfeiter:generate -o mocks/github_client.go --fake-name GitHubClient . GitHubClient
@@ -44,7 +45,12 @@ type GitHubClient interface {
 	// SearchPRs issues a GitHub Search query for open PRs updated since cursor.
 	// page=1 for the first call; use SearchResult.NextPage for subsequent calls.
 	// PullRequest.HeadSHA in the result is empty — call GetHeadSHA to fetch it.
-	SearchPRs(ctx context.Context, scope string, since time.Time, page int) (SearchResult, error)
+	SearchPRs(
+		ctx context.Context,
+		scope string,
+		since libtime.DateTime,
+		page int,
+	) (SearchResult, error)
 
 	// GetHeadSHA fetches the head commit SHA for a single PR. The Search
 	// API does NOT return head SHA, so the poll loop must call this for
@@ -66,13 +72,13 @@ type githubClient struct {
 func (c *githubClient) SearchPRs(
 	ctx context.Context,
 	scope string,
-	since time.Time,
+	since libtime.DateTime,
 	page int,
 ) (SearchResult, error) {
 	query := fmt.Sprintf(
 		"is:pr is:open archived:false user:%s updated:>=%s",
 		scope,
-		since.UTC().Format(time.RFC3339),
+		since.Format(time.RFC3339),
 	)
 	opts := &gogithub.SearchOptions{
 		ListOptions: gogithub.ListOptions{
@@ -100,7 +106,7 @@ func (c *githubClient) SearchPRs(
 			HeadSHA:     "",
 			AuthorLogin: issue.GetUser().GetLogin(),
 			IsDraft:     issue.GetDraft(),
-			UpdatedAt:   issue.GetUpdatedAt().Time,
+			UpdatedAt:   libtime.DateTime(issue.GetUpdatedAt().Time),
 		})
 	}
 
@@ -109,7 +115,7 @@ func (c *githubClient) SearchPRs(
 		HasNextPage:   resp.NextPage > 0,
 		NextPage:      resp.NextPage,
 		RateRemaining: resp.Rate.Remaining,
-		RateResetAt:   resp.Rate.Reset.Time,
+		RateResetAt:   libtime.DateTime(resp.Rate.Reset.Time),
 	}, nil
 }
 
