@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Flattened agent/pr-reviewer/pkg/ by collapsing config, prurl, review, verdict, version, steps into flat pkg/ files and merging prompts/{execution,planning,review}/ into a single prompts/ package; regenerated mocks and all tests pass with make precommit exit 0.
 container: code-reviewer-064-review-agent-pr-reviewer-flatten-pkg-structure
 dark-factory-version: v0.135.19-1-gc08c946
 created: "2026-04-28T20:00:00Z"
 queued: "2026-04-28T19:58:35Z"
 started: "2026-04-28T19:58:37Z"
+completed: "2026-04-28T20:20:43Z"
 ---
 
 <summary>
