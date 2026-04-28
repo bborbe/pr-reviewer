@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Added container securityContext (runAsNonRoot, runAsUser 65534, allowPrivilegeEscalation false, readOnlyRootFilesystem true, drop ALL) and emptyDir /tmp volume to watcher/github StatefulSet.
 container: code-reviewer-061-review-watcher-github-add-k8s-pod-security-context
 dark-factory-version: v0.135.19-1-gc08c946
 created: "2026-04-28T00:00:00Z"
 queued: "2026-04-28T15:31:17Z"
 started: "2026-04-28T18:25:46Z"
+completed: "2026-04-28T18:26:25Z"
 ---
 
 <summary>
