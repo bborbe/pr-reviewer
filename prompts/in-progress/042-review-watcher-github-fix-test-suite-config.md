@@ -1,7 +1,11 @@
 ---
-status: approved
+status: committing
+summary: Fixed pkg/suite_test.go to use GinkgoConfiguration() with 60s timeout and replaced all 13 time.Now() calls in watcher_test.go and githubclient_test.go with a fixed date var.
+container: code-reviewer-042-review-watcher-github-fix-test-suite-config
+dark-factory-version: v0.135.19-1-gc08c946
 created: "2026-04-28T00:00:00Z"
 queued: "2026-04-28T14:32:41Z"
+started: "2026-04-28T14:37:39Z"
 ---
 
 <summary>

@@ -195,7 +195,7 @@ var _ = Describe("pkg.Watcher", func() {
 				Repo:        "repo",
 				AuthorLogin: "alice",
 				IsDraft:     true,
-				UpdatedAt:   time.Now(),
+				UpdatedAt:   fixedNow,
 			}
 			ghClient.SearchPRsReturns(pkg.SearchResult{
 				PullRequests:  []pkg.PullRequest{pr},
@@ -218,7 +218,7 @@ var _ = Describe("pkg.Watcher", func() {
 				Repo:        "repo",
 				AuthorLogin: "dependabot[bot]",
 				IsDraft:     false,
-				UpdatedAt:   time.Now(),
+				UpdatedAt:   fixedNow,
 			}
 			ghClient.SearchPRsReturns(pkg.SearchResult{
 				PullRequests:  []pkg.PullRequest{pr},
@@ -340,7 +340,7 @@ var _ = Describe("pkg.Watcher", func() {
 					Owner:       "bborbe",
 					Repo:        "repo",
 					AuthorLogin: "alice",
-					UpdatedAt:   time.Now(),
+					UpdatedAt:   fixedNow,
 				},
 			}
 			ghClient.SearchPRsReturns(pkg.SearchResult{
@@ -365,7 +365,7 @@ var _ = Describe("pkg.Watcher", func() {
 				Repo:        "repo",
 				Title:       "my title",
 				AuthorLogin: "alice",
-				UpdatedAt:   time.Now(),
+				UpdatedAt:   fixedNow,
 			}
 			ghClient.SearchPRsReturns(pkg.SearchResult{
 				PullRequests:  []pkg.PullRequest{pr},

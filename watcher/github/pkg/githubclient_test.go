@@ -20,6 +20,8 @@ import (
 	"github.com/bborbe/code-reviewer/watcher/github/pkg"
 )
 
+var fixedNow = time.Date(2026, 2, 1, 12, 0, 0, 0, time.UTC)
+
 var _ = Describe("pkg.GitHubClient", func() {
 	var (
 		ctx    context.Context
@@ -44,7 +46,7 @@ var _ = Describe("pkg.GitHubClient", func() {
 	Describe("SearchPRs", func() {
 		Context("single page, two PRs, no next page", func() {
 			It("returns both PRs with correct fields", func() {
-				resetAt := time.Now().Add(time.Hour).Unix()
+				resetAt := fixedNow.Add(time.Hour).Unix()
 				server := httptest.NewServer(
 					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						Expect(r.URL.Path).To(Equal("/search/issues"))
@@ -82,7 +84,7 @@ var _ = Describe("pkg.GitHubClient", func() {
 				defer server.Close()
 
 				client := buildClient(server)
-				result, err := client.SearchPRs(ctx, "owner", time.Now().Add(-24*time.Hour), 1)
+				result, err := client.SearchPRs(ctx, "owner", fixedNow.Add(-24*time.Hour), 1)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result.PullRequests).To(HaveLen(2))
 				Expect(result.HasNextPage).To(BeFalse())
@@ -114,7 +116,7 @@ var _ = Describe("pkg.GitHubClient", func() {
 						callCount++
 						w.Header().Set("X-RateLimit-Remaining", "100")
 						w.Header().
-							Set("X-RateLimit-Reset", strconv.FormatInt(time.Now().Add(time.Hour).Unix(), 10))
+							Set("X-RateLimit-Reset", strconv.FormatInt(fixedNow.Add(time.Hour).Unix(), 10))
 						w.Header().Set("Content-Type", "application/json")
 						if r.URL.Query().Get("page") == "2" {
 							fmt.Fprintf(w, `{
@@ -159,7 +161,7 @@ var _ = Describe("pkg.GitHubClient", func() {
 
 				client := buildClient(server)
 
-				result1, err := client.SearchPRs(ctx, "org", time.Now().Add(-24*time.Hour), 1)
+				result1, err := client.SearchPRs(ctx, "org", fixedNow.Add(-24*time.Hour), 1)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result1.HasNextPage).To(BeTrue())
 				Expect(result1.NextPage).To(Equal(2))
@@ -168,7 +170,7 @@ var _ = Describe("pkg.GitHubClient", func() {
 				result2, err := client.SearchPRs(
 					ctx,
 					"org",
-					time.Now().Add(-24*time.Hour),
+					fixedNow.Add(-24*time.Hour),
 					result1.NextPage,
 				)
 				Expect(err).NotTo(HaveOccurred())
@@ -180,7 +182,7 @@ var _ = Describe("pkg.GitHubClient", func() {
 
 		Context("rate limit fields", func() {
 			It("populates RateRemaining and RateResetAt correctly", func() {
-				resetTime := time.Now().Add(30 * time.Minute).Truncate(time.Second)
+				resetTime := fixedNow.Add(30 * time.Minute).Truncate(time.Second)
 				server := httptest.NewServer(
 					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						w.Header().Set("X-RateLimit-Remaining", "5")
@@ -192,7 +194,7 @@ var _ = Describe("pkg.GitHubClient", func() {
 				defer server.Close()
 
 				client := buildClient(server)
-				result, err := client.SearchPRs(ctx, "org", time.Now().Add(-time.Hour), 1)
+				result, err := client.SearchPRs(ctx, "org", fixedNow.Add(-time.Hour), 1)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result.RateRemaining).To(Equal(5))
 				Expect(result.RateResetAt.Unix()).To(Equal(resetTime.Unix()))
@@ -214,7 +216,7 @@ var _ = Describe("pkg.GitHubClient", func() {
 				defer server.Close()
 
 				client := buildClient(server)
-				_, err := client.SearchPRs(ctx, "org", time.Now().Add(-time.Hour), 1)
+				_, err := client.SearchPRs(ctx, "org", fixedNow.Add(-time.Hour), 1)
 				Expect(err).To(HaveOccurred())
 			})
 		})
@@ -234,7 +236,7 @@ var _ = Describe("pkg.GitHubClient", func() {
 				cancelFn()
 
 				client := buildClient(server)
-				_, err := client.SearchPRs(cancelledCtx, "org", time.Now().Add(-time.Hour), 1)
+				_, err := client.SearchPRs(cancelledCtx, "org", fixedNow.Add(-time.Hour), 1)
 				Expect(err).To(HaveOccurred())
 			})
 		})

@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.16.8
+
+- fix: watcher/github pkg suite uses GinkgoConfiguration() with 60s timeout; replace time.Now() with fixed date in test fixtures for determinism
+
 ## v0.16.7
 
 - fix(agent/pr-reviewer): update five Ginkgo suite files to use four-argument `RunSpecs` with `GinkgoConfiguration()` and 60-second timeout so suites respect Ginkgo configuration flags
