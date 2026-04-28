@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.16.5
+
+- feat(watcher/github): add admin `/trigger` HTTP endpoint — fires an out-of-band poll cycle on demand via `libhttp.NewBackgroundRunHandler` (async, ParallelSkipper-deduped). Refactors poll logic into a shared `pollOnce run.Func` reused by cron loop + handler.
+
 ## v0.16.4
 
 - refactor(agent/pr-reviewer): swap local `pkg/plugins` for `agent/lib/claude.PluginInstaller` (lib/v0.56.0). Drops 4 files; behavior unchanged. Phase 2 of EnsurePluginsInstaller task.

@@ -71,13 +71,22 @@ func (a *application) Run(ctx context.Context, _ libsentry.Client) error {
 	glog.V(2).
 		Infof("github-pr-watcher starting stage=%s scope=%s interval=%s listen=%s", a.Stage, a.RepoScope, a.PollInterval, a.Listen)
 
+	pollOnce := a.pollOnce(w)
+
 	return run.CancelOnFirstFinish(ctx,
-		a.runPollLoop(w, pollInterval),
-		a.runHTTPServer(),
+		a.runPollLoop(pollOnce, pollInterval),
+		a.runHTTPServer(pollOnce),
 	)
 }
 
-func (a *application) runPollLoop(w pkg.Watcher, interval time.Duration) run.Func {
+func (a *application) pollOnce(w pkg.Watcher) run.Func {
+	return func(ctx context.Context) error {
+		glog.V(2).Infof("poll cycle start stage=%s", a.Stage)
+		return w.Poll(ctx)
+	}
+}
+
+func (a *application) runPollLoop(poll run.Func, interval time.Duration) run.Func {
 	return func(ctx context.Context) error {
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
@@ -87,8 +96,7 @@ func (a *application) runPollLoop(w pkg.Watcher, interval time.Duration) run.Fun
 				glog.V(2).Infof("poll loop: context cancelled, exiting cleanly")
 				return nil
 			case <-ticker.C:
-				glog.V(2).Infof("poll cycle start stage=%s", a.Stage)
-				if err := w.Poll(ctx); err != nil {
+				if err := poll(ctx); err != nil {
 					glog.Errorf("poll cycle error: %v", err)
 				}
 			}
@@ -96,12 +104,13 @@ func (a *application) runPollLoop(w pkg.Watcher, interval time.Duration) run.Fun
 	}
 }
 
-func (a *application) runHTTPServer() run.Func {
+func (a *application) runHTTPServer(poll run.Func) run.Func {
 	return func(ctx context.Context) error {
 		router := mux.NewRouter()
 		router.Path("/healthz").Handler(libhttp.NewPrintHandler("OK"))
 		router.Path("/readiness").Handler(libhttp.NewPrintHandler("OK"))
 		router.Path("/metrics").Handler(promhttp.Handler())
+		router.Path("/trigger").Handler(libhttp.NewBackgroundRunHandler(ctx, poll))
 		glog.V(2).Infof("http server listening on %s", a.Listen)
 		return libhttp.NewServer(a.Listen, router).Run(ctx)
 	}
