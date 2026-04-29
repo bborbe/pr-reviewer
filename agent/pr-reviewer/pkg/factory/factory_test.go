@@ -16,6 +16,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/code-reviewer/agent/pr-reviewer/pkg/factory"
+	"github.com/bborbe/code-reviewer/agent/pr-reviewer/pkg/git"
 )
 
 var _ = Describe("Factory", func() {
@@ -45,23 +46,27 @@ var _ = Describe("Factory", func() {
 
 	Describe("CreateAgent", func() {
 		It("returns a non-nil AgentRunner with empty token and env", func() {
+			var repoManager git.RepoManager
 			agent := factory.CreateAgent(
 				"",
 				"agent",
 				"sonnet",
 				"",
 				map[string]string{},
+				repoManager,
 			)
 			Expect(agent).NotTo(BeNil())
 		})
 
 		It("returns a non-nil AgentRunner with token set in env", func() {
+			var repoManager git.RepoManager
 			agent := factory.CreateAgent(
 				"",
 				"agent",
 				"sonnet",
 				"test-token",
 				map[string]string{"GH_TOKEN": "test-token"},
+				repoManager,
 			)
 			Expect(agent).NotTo(BeNil())
 		})

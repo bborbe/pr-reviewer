@@ -25,6 +25,7 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/bborbe/code-reviewer/agent/pr-reviewer/pkg/factory"
+	"github.com/bborbe/code-reviewer/agent/pr-reviewer/pkg/git"
 )
 
 func main() {
@@ -45,6 +46,10 @@ type application struct {
 	// Model selection
 	Model claudelib.ClaudeModel `required:"false" arg:"model" env:"MODEL" usage:"Claude model to use (sonnet, opus)" default:"sonnet"`
 
+	// Workdir paths for bare-clone cache and per-task worktrees
+	ReposPath string `required:"false" arg:"repos-path" env:"REPOS_PATH" usage:"Root path for bare-clone cache"   default:"/repos"`
+	WorkPath  string `required:"false" arg:"work-path"  env:"WORK_PATH"  usage:"Root path for per-task worktrees" default:"/work"`
+
 	// Task content from agent pipeline
 	TaskContent string `required:"true" arg:"task-content" env:"TASK_CONTENT" usage:"Raw task markdown from vault"`
 
@@ -64,6 +69,15 @@ type application struct {
 
 func (a *application) Run(ctx context.Context, _ libsentry.Client) error {
 	glog.V(2).Infof("agent-pr-reviewer started phase=%s", a.Phase)
+
+	workdirCfg := git.WorkdirConfig{
+		ReposPath: a.ReposPath,
+		WorkPath:  a.WorkPath,
+	}
+	repoManager := git.NewRepoManager(workdirCfg)
+	if err := repoManager.PruneAllWorktrees(ctx); err != nil {
+		glog.Warningf("startup worktree prune: %v", err)
+	}
 
 	installer := claudelib.NewPluginInstaller(claudelib.NewExecPluginCommander())
 	if err := installer.EnsureInstalled(ctx, []claudelib.PluginSpec{
@@ -97,7 +111,14 @@ func (a *application) Run(ctx context.Context, _ libsentry.Client) error {
 		env["GH_TOKEN"] = a.GHToken
 	}
 
-	agent := factory.CreateAgent(a.ClaudeConfigDir, a.AgentDir, a.Model, a.GHToken, env)
+	agent := factory.CreateAgent(
+		a.ClaudeConfigDir,
+		a.AgentDir,
+		a.Model,
+		a.GHToken,
+		env,
+		repoManager,
+	)
 
 	result, err := agent.Run(ctx, a.Phase, a.TaskContent, resultDeliverer)
 	if err != nil {

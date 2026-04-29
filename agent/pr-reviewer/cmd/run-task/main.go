@@ -12,6 +12,7 @@ package main
 import (
 	"context"
 	"os"
+	"path/filepath"
 
 	agentlib "github.com/bborbe/agent/lib"
 	claudelib "github.com/bborbe/agent/lib/claude"
@@ -22,6 +23,7 @@ import (
 	"github.com/bborbe/vault-cli/pkg/domain"
 
 	"github.com/bborbe/code-reviewer/agent/pr-reviewer/pkg/factory"
+	"github.com/bborbe/code-reviewer/agent/pr-reviewer/pkg/git"
 )
 
 func main() {
@@ -41,6 +43,10 @@ type application struct {
 
 	// Model selection
 	Model claudelib.ClaudeModel `required:"false" arg:"model" env:"MODEL" usage:"Claude model to use (sonnet, opus)" default:"sonnet"`
+
+	// Workdir paths for bare-clone cache and per-task worktrees (default: ~/.cache/code-reviewer/*)
+	ReposPath string `required:"false" arg:"repos-path" env:"REPOS_PATH" usage:"Root path for bare-clone cache (default: ~/.cache/code-reviewer/repos)"`
+	WorkPath  string `required:"false" arg:"work-path"  env:"WORK_PATH"  usage:"Root path for per-task worktrees (default: ~/.cache/code-reviewer/work)"`
 
 	// Environment
 	Branch base.Branch `required:"true" arg:"branch" env:"BRANCH" usage:"branch" default:"dev"`
@@ -65,12 +71,39 @@ func (a *application) Run(ctx context.Context, _ libsentry.Client) error {
 
 	deliverer := factory.CreateFileResultDeliverer(a.TaskFilePath)
 
+	reposPath := a.ReposPath
+	workPath := a.WorkPath
+	if reposPath == "" || workPath == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return errors.Wrap(ctx, err, "resolve user home dir")
+		}
+		if reposPath == "" {
+			reposPath = filepath.Join(home, ".cache", "code-reviewer", "repos")
+		}
+		if workPath == "" {
+			workPath = filepath.Join(home, ".cache", "code-reviewer", "work")
+		}
+	}
+	workdirCfg := git.WorkdirConfig{
+		ReposPath: reposPath,
+		WorkPath:  workPath,
+	}
+	repoManager := git.NewRepoManager(workdirCfg)
+
 	env := map[string]string{}
 	if a.GHToken != "" {
 		env["GH_TOKEN"] = a.GHToken
 	}
 
-	agent := factory.CreateAgent(a.ClaudeConfigDir, a.AgentDir, a.Model, a.GHToken, env)
+	agent := factory.CreateAgent(
+		a.ClaudeConfigDir,
+		a.AgentDir,
+		a.Model,
+		a.GHToken,
+		env,
+		repoManager,
+	)
 
 	result, err := agent.Run(ctx, a.Phase, string(taskContent), deliverer)
 	if err != nil {

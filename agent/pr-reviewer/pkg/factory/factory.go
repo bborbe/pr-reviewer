@@ -22,6 +22,7 @@ import (
 	"github.com/golang/glog"
 
 	prpkg "github.com/bborbe/code-reviewer/agent/pr-reviewer/pkg"
+	"github.com/bborbe/code-reviewer/agent/pr-reviewer/pkg/git"
 	"github.com/bborbe/code-reviewer/agent/pr-reviewer/pkg/prompts"
 )
 
@@ -50,9 +51,13 @@ var (
 	}
 	executionTools = claudelib.AllowedTools{
 		"Read", "Grep", "Glob",
-		"Bash(git:*)",
-		"Bash(gh pr view:*)", "Bash(gh pr diff:*)", "Bash(gh pr list:*)",
-		"WebFetch",
+		"Bash(cd:*)",
+		"Bash(git diff:*)",
+		"Bash(git log:*)",
+		"Bash(git show:*)",
+		"Bash(git clone:*)",
+		"Bash(git fetch:*)",
+		"Bash(git worktree:*)",
 	}
 	reviewTools = claudelib.AllowedTools{
 		"Read", "Grep",
@@ -134,6 +139,7 @@ func CreateAgent(
 	model claudelib.ClaudeModel,
 	ghToken string,
 	env map[string]string,
+	repoManager git.RepoManager,
 ) AgentRunner {
 	tokenCheck := prpkg.NewGHTokenCheckStep(ghToken)
 	planningStep := claudelib.NewAgentStep(claudelib.AgentStepConfig{
@@ -143,13 +149,15 @@ func CreateAgent(
 		OutputSection: "## Plan",
 		NextPhase:     "in_progress",
 	})
-	executionStep := claudelib.NewAgentStep(claudelib.AgentStepConfig{
-		Name:          "pr-execute",
-		Runner:        CreateClaudeRunner(claudeConfigDir, agentDir, model, env, executionTools),
-		Instructions:  prompts.BuildExecutionInstructions(),
-		OutputSection: "## Review",
-		NextPhase:     "ai_review",
-	})
+	executionStep := prpkg.NewCheckoutExecutionStep(
+		repoManager,
+		claudeConfigDir,
+		agentDir,
+		model,
+		env,
+		executionTools,
+		prompts.BuildExecutionInstructions(),
+	)
 	reviewStep := prpkg.NewReviewStep(
 		CreateClaudeRunner(claudeConfigDir, agentDir, model, env, reviewTools),
 		prompts.BuildReviewInstructions(),
