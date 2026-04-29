@@ -226,12 +226,14 @@ type testOrigin struct {
 }
 
 // newTestOrigin creates a temporary git repository that RepoManager can clone from.
-// The repo is placed at a path with exactly 2 path components under the system temp dir
-// (e.g., /tmp/gittestXXXXX) so that ParseCloneURL can derive a valid relative path
-// from a file://localhost/tmp/gittestXXXXX URL.
+// The repo is placed under /tmp explicitly (NOT os.TempDir(), which resolves to a
+// multi-component path like /var/folders/.../T on macOS) so the resulting path has
+// exactly 2 components (/tmp/gittestXXXXX) and ParseCloneURL derives a valid 2-segment
+// relative path from the file://localhost/tmp/gittestXXXXX URL.
 func newTestOrigin() *testOrigin {
-	dir, err := os.MkdirTemp("", "gittest")
+	dir, err := os.MkdirTemp("/tmp", "gittest")
 	Expect(err).To(BeNil())
+	DeferCleanup(func() { _ = os.RemoveAll(dir) })
 
 	runCmd(dir, "git", "init")
 	runCmd(dir, "git", "config", "user.email", "test@example.com")
