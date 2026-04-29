@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [010-git-checkout-review-workdir]
 summary: Implemented RepoManager, WorkdirConfig, and ParseCloneURL in agent/pr-reviewer/pkg/git/ with bare-clone caching, per-task worktrees, stale-worktree pruning, and full test coverage (87%)
 container: code-reviewer-065-spec-010-repo-manager
@@ -7,6 +7,7 @@ dark-factory-version: v0.135.19-1-gc08c946
 created: "2026-04-29T09:00:00Z"
 queued: "2026-04-29T12:10:35Z"
 started: "2026-04-29T12:11:57Z"
+completed: "2026-04-29T12:21:22Z"
 branch: dark-factory/git-checkout-review-workdir
 ---
 
