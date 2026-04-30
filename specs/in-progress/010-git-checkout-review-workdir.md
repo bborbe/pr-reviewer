@@ -1,11 +1,12 @@
 ---
-status: prompted
+status: verifying
 tags:
     - dark-factory
     - spec
 approved: "2026-04-29T11:25:04Z"
 generating: "2026-04-29T11:26:52Z"
 prompted: "2026-04-29T11:39:07Z"
+verifying: "2026-04-29T12:27:41Z"
 branch: dark-factory/git-checkout-review-workdir
 ---
 
