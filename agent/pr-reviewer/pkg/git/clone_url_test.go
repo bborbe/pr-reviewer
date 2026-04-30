@@ -37,6 +37,21 @@ var _ = Describe("ParseCloneURL", func() {
 			"https://github.com/bborbe/code-reviewer",
 			"github.com/bborbe/code-reviewer.git",
 		),
+		Entry(
+			"SCP-style SSH URL",
+			"git@github.com:bborbe/code-reviewer.git",
+			"github.com/bborbe/code-reviewer.git",
+		),
+		Entry(
+			"SCP-style SSH URL without .git suffix",
+			"git@github.com:bborbe/code-reviewer",
+			"github.com/bborbe/code-reviewer.git",
+		),
+		Entry(
+			"SCP-style SSH URL on non-GitHub host",
+			"git@bitbucket.example.com:team/repo.git",
+			"bitbucket.example.com/team/repo.git",
+		),
 	)
 
 	DescribeTable("invalid URLs",
@@ -53,5 +68,8 @@ var _ = Describe("ParseCloneURL", func() {
 		Entry("only one path segment", "https://github.com/owner"),
 		Entry("three path segments", "https://github.com/owner/repo/extra"),
 		Entry("shell metacharacter in repo", "https://github.com/owner/repo;rm -rf /"),
+		Entry("SCP-style with path traversal", "git@github.com:../repo.git"),
+		Entry("SCP-style with shell metacharacter", "git@github.com:owner/repo;rm -rf /"),
+		Entry("SCP-style with only one path segment", "git@github.com:owner"),
 	)
 })
