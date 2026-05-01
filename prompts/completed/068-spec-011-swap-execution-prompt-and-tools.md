@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [011-swap-execution-to-coding-pr-review]
 summary: Replaced hand-rolled execution_workflow.md with plugin-delegation wrapper, wired reviewMode through BuildExecutionInstructions/CreateAgent/both entry points, updated executionTools to match plugin frontmatter, and added sub-agent audit comment.
 container: code-reviewer-068-spec-011-swap-execution-prompt-and-tools
@@ -7,6 +7,7 @@ dark-factory-version: dev
 created: "2026-05-01T10:00:00Z"
 queued: "2026-05-01T09:31:59Z"
 started: "2026-05-01T09:32:32Z"
+completed: "2026-05-01T09:36:40Z"
 branch: dark-factory/swap-execution-to-coding-pr-review
 ---
 
