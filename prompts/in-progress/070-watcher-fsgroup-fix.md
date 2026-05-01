@@ -1,7 +1,11 @@
 ---
-status: approved
+status: committing
+summary: 'Added pod-level securityContext with fsGroup: 65534 to github-pr-watcher StatefulSet and recorded fix in CHANGELOG.md under a new ## Unreleased section.'
+container: code-reviewer-070-watcher-fsgroup-fix
+dark-factory-version: dev
 created: "2026-04-30T00:00:00Z"
 queued: "2026-05-01T09:34:13Z"
+started: "2026-05-01T09:37:38Z"
 ---
 
 <summary>

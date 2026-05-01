@@ -35,6 +35,8 @@ spec:
                     operator: In
                     values:
                       - 'agent'
+      securityContext:
+        fsGroup: 65534
       containers:
         - name: service
           args:

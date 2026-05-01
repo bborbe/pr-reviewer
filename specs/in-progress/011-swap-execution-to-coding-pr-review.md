@@ -1,11 +1,12 @@
 ---
-status: prompted
+status: verifying
 tags:
     - dark-factory
     - spec
 approved: "2026-05-01T09:02:12Z"
 generating: "2026-05-01T09:02:16Z"
 prompted: "2026-05-01T09:11:58Z"
+verifying: "2026-05-01T09:37:36Z"
 branch: dark-factory/swap-execution-to-coding-pr-review
 ---
 
