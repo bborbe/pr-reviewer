@@ -49,15 +49,20 @@ var (
 		"Bash(git diff:*)", "Bash(git log:*)", "Bash(git show:*)",
 		"Bash(gh pr view:*)", "Bash(gh pr diff:*)", "Bash(gh pr list:*)",
 	}
+	// Sub-agent allowlist audit (spec-011): each coding:* sub-agent dispatched by
+	// /coding:pr-review declares read-only tools only (Read, Grep, Glob, restricted
+	// Bash for analysis). No Write, Edit, curl, wget, or network-exfil primitives.
+	// Verified by inspecting ~/.claude/plugins/marketplaces/coding/agents/*.md.
 	executionTools = claudelib.AllowedTools{
-		"Read", "Grep", "Glob",
-		"Bash(cd:*)",
+		"Task",
 		"Bash(git diff:*)",
 		"Bash(git log:*)",
-		"Bash(git show:*)",
-		"Bash(git clone:*)",
+		"Bash(git status:*)",
+		"Bash(git ls-files:*)",
 		"Bash(git fetch:*)",
 		"Bash(git worktree:*)",
+		"Bash(git branch:*)",
+		"Bash(rm -rf:*)",
 	}
 	reviewTools = claudelib.AllowedTools{
 		"Read", "Grep",
@@ -140,6 +145,7 @@ func CreateAgent(
 	ghToken string,
 	env map[string]string,
 	repoManager git.RepoManager,
+	reviewMode string,
 ) AgentRunner {
 	tokenCheck := prpkg.NewGHTokenCheckStep(ghToken)
 	planningStep := claudelib.NewAgentStep(claudelib.AgentStepConfig{
@@ -156,7 +162,7 @@ func CreateAgent(
 		model,
 		env,
 		executionTools,
-		prompts.BuildExecutionInstructions(),
+		prompts.BuildExecutionInstructions(reviewMode),
 	)
 	reviewStep := prpkg.NewReviewStep(
 		CreateClaudeRunner(claudeConfigDir, agentDir, model, env, reviewTools),

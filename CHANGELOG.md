@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.21.0
+
+- feat: replace hand-rolled execution-phase prompt with `/coding:pr-review` plugin delegation; add `-review-mode` flag (short|standard|full, default standard); update `executionTools` to match plugin's declared tool requirements
+
 ## v0.19.1
 
 - chore: raise `ephemeral-storage` from `2Gi` to `5Gi` in both requests and limits for agent-pr-reviewer K8s Config CR to accommodate full-size git clones on overlayfs

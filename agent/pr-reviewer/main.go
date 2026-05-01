@@ -50,6 +50,9 @@ type application struct {
 	ReposPath string `required:"false" arg:"repos-path" env:"REPOS_PATH" usage:"Root path for bare-clone cache"   default:"/repos"`
 	WorkPath  string `required:"false" arg:"work-path"  env:"WORK_PATH"  usage:"Root path for per-task worktrees" default:"/work"`
 
+	// Review depth passed to /coding:pr-review (short | standard | full)
+	ReviewMode string `required:"false" arg:"review-mode" env:"REVIEW_MODE" usage:"Review depth: short | standard | full" default:"standard"`
+
 	// Task content from agent pipeline
 	TaskContent string `required:"true" arg:"task-content" env:"TASK_CONTENT" usage:"Raw task markdown from vault"`
 
@@ -118,6 +121,7 @@ func (a *application) Run(ctx context.Context, _ libsentry.Client) error {
 		a.GHToken,
 		env,
 		repoManager,
+		a.ReviewMode,
 	)
 
 	result, err := agent.Run(ctx, a.Phase, a.TaskContent, resultDeliverer)
