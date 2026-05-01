@@ -1,8 +1,12 @@
 ---
-status: approved
+status: committing
 spec: [011-swap-execution-to-coding-pr-review]
+summary: Created scenarios/005-spec-011-plugin-pr-review.md with the full manual verification checklist for the /coding:pr-review plugin delegation execution phase, and added an Unreleased entry to CHANGELOG.md.
+container: code-reviewer-069-spec-011-scenario
+dark-factory-version: dev
 created: "2026-05-01T10:00:00Z"
 queued: "2026-05-01T09:31:59Z"
+started: "2026-05-01T09:36:42Z"
 branch: dark-factory/swap-execution-to-coding-pr-review
 ---
 

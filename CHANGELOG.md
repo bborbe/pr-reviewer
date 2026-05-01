@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.21.1
+
+- docs: add scenario 005 manual verification checklist for `/coding:pr-review` plugin delegation end-to-end (slash command invocation, sub-agent fan-out, verdict JSON schema, workdir cleanup)
+
 ## v0.21.0
 
 - feat: replace hand-rolled execution-phase prompt with `/coding:pr-review` plugin delegation; add `-review-mode` flag (short|standard|full, default standard); update `executionTools` to match plugin's declared tool requirements
