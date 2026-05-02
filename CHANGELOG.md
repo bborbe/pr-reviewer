@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.23.3
+
+- feat(watcher): add `WIPTitleFilter` (skip PRs with `WIP:` / `WIP ` title prefix) and `AgeFilter` (skip PRs older than `MAX_PR_AGE`, default 90 days). Both extend the `TaskCreationFilter` chain. Configurable via `MAX_PR_AGE` env var (libtime extended duration; empty disables age filter, negative rejected at startup).
+
 Please choose versions by [Semantic Versioning](http://semver.org/).
 
 * MAJOR version when you make incompatible API changes,

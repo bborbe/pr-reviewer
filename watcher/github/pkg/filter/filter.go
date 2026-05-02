@@ -15,11 +15,15 @@
 // See docs/watcher-decision-chains.md for the full split rationale.
 package filter
 
+import libtime "github.com/bborbe/time"
+
 // PR is the filter-evaluation input derived from a GitHub pull request.
 // Only the fields needed for task-creation filter decisions are included.
 type PR struct {
 	AuthorLogin string
 	IsDraft     bool
+	Title       string
+	UpdatedAt   libtime.DateTime
 }
 
 //counterfeiter:generate -o ../mocks/task_creation_filter.go --fake-name TaskCreationFilter . TaskCreationFilter

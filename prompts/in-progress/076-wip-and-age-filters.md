@@ -1,7 +1,11 @@
 ---
-status: approved
+status: committing
+summary: Added WIPTitleFilter and AgeFilter to the TaskCreationFilter chain, extended filter.PR with Title/UpdatedAt fields, wired MAX_PR_AGE env var into main.go with fail-fast negative validation, and added full test coverage for both new filter leaves.
+container: code-reviewer-076-wip-and-age-filters
+dark-factory-version: dev
 created: "2026-05-02T13:35:00Z"
 queued: "2026-05-02T11:34:54Z"
+started: "2026-05-02T11:42:22Z"
 ---
 
 <summary>

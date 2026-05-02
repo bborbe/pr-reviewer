@@ -55,6 +55,7 @@ type application struct {
 	RepoScope      string           `required:"false" arg:"repo-scope"      env:"REPO_SCOPE"      usage:"GitHub user/org scope"                                                               default:"bborbe"`
 	BotAllowlist   string           `required:"false" arg:"bot-allowlist"   env:"BOT_ALLOWLIST"   usage:"Comma-separated bot author allowlist"                                                default:"dependabot[bot],renovate[bot]"`
 	TrustedAuthors string           `required:"false" arg:"trusted-authors" env:"TRUSTED_AUTHORS" usage:"Comma-separated trusted GitHub author logins (required; empty list refuses startup)"`
+	MaxPRAge       string           `required:"false" arg:"max-pr-age"      env:"MAX_PR_AGE"      usage:"Skip PRs older than this (Go duration; empty disables)"                              default:"2160h"`
 }
 
 func (a *application) Run(ctx context.Context, _ libsentry.Client) error {
@@ -68,11 +69,28 @@ func (a *application) Run(ctx context.Context, _ libsentry.Client) error {
 	}
 
 	botAllowlist := pkg.ParseBotAllowlist(a.BotAllowlist)
+	startTime := libtime.NewCurrentDateTime().Now()
+
+	var maxAge libtime.Duration
+	if a.MaxPRAge != "" {
+		parsed, err := libtime.ParseDuration(ctx, a.MaxPRAge)
+		if err != nil {
+			return errors.Wrapf(ctx, err, "parse MAX_PR_AGE")
+		}
+		if parsed != nil {
+			maxAge = *parsed
+		}
+	}
+	if maxAge < 0 {
+		return errors.Errorf(ctx, "MAX_PR_AGE must not be negative, got %s", maxAge)
+	}
+
 	taskCreationFilter := filter.TaskCreationFilters{
 		filter.NewDraftFilter(),
 		filter.NewBotAuthorFilter(botAllowlist),
+		filter.NewWIPTitleFilter(),
+		filter.NewAgeFilter(maxAge, startTime),
 	}
-	startTime := libtime.NewCurrentDateTime().Now()
 
 	trustedAuthors := pkg.ParseTrustedAuthors(a.TrustedAuthors)
 	if len(trustedAuthors) == 0 {

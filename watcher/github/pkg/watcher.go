@@ -133,7 +133,14 @@ func (w *watcher) processPRs(
 	for _, pr := range allPRs {
 		taskIDStr := DeriveTaskID(pr.Owner, pr.Repo, pr.Number).String()
 
-		if w.taskCreationFilter.Skip(filter.PR{AuthorLogin: pr.AuthorLogin, IsDraft: pr.IsDraft}) {
+		if w.taskCreationFilter.Skip(
+			filter.PR{
+				AuthorLogin: pr.AuthorLogin,
+				IsDraft:     pr.IsDraft,
+				Title:       pr.Title,
+				UpdatedAt:   pr.UpdatedAt,
+			},
+		) {
 			glog.V(3).Infof("skipping pr=%s/%s#%d reason=filtered", pr.Owner, pr.Repo, pr.Number)
 			w.metrics.IncPRPublished("skipped")
 			if known, ok := cursorState.HeadSHAs[taskIDStr]; ok {
