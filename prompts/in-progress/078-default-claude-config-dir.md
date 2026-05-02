@@ -1,5 +1,6 @@
 ---
-status: executing
+status: committing
+summary: Added `default:"~/.claude"` to ClaudeConfigDir field tag in both agent/pr-reviewer/main.go and agent/pr-reviewer/cmd/run-task/main.go, and added Unreleased CHANGELOG entry.
 container: code-reviewer-078-default-claude-config-dir
 dark-factory-version: v0.143.0-5-g73d1db8
 created: "2026-05-02T15:55:00Z"
