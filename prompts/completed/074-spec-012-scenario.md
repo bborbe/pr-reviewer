@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [012-watcher-author-trust-filter]
 summary: Created scenarios/006-watcher-author-trust-filter.md with 5 sub-scenarios and 36 checkboxes covering the spec-012 author-trust gate integration seam, and added an Unreleased entry to CHANGELOG.md.
 container: code-reviewer-074-spec-012-scenario
@@ -7,6 +7,7 @@ dark-factory-version: dev
 created: "2026-05-02T10:00:00Z"
 queued: "2026-05-02T10:14:28Z"
 started: "2026-05-02T10:23:38Z"
+completed: "2026-05-02T10:24:41Z"
 branch: dark-factory/watcher-author-trust-filter
 ---
 
