@@ -55,6 +55,8 @@ spec:
               value: '{{ "STAGE" | env }}'
             - name: SENTRY_PROXY
               value: '{{"SENTRY_PROXY_URL" | env}}'
+            - name: TRUSTED_AUTHORS
+              value: '{{"TRUSTED_AUTHORS" | env}}'
           image: '{{"DOCKER_REGISTRY" | env}}/github-pr-watcher:{{"BRANCH" | env}}'
           imagePullPolicy: Always
           securityContext:
