@@ -26,6 +26,7 @@ import (
 
 	"github.com/bborbe/code-reviewer/watcher/github/pkg"
 	"github.com/bborbe/code-reviewer/watcher/github/pkg/factory"
+	"github.com/bborbe/code-reviewer/watcher/github/pkg/filter"
 )
 
 var repoScopePattern = regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)
@@ -67,6 +68,10 @@ func (a *application) Run(ctx context.Context, _ libsentry.Client) error {
 	}
 
 	botAllowlist := pkg.ParseBotAllowlist(a.BotAllowlist)
+	taskCreationFilter := filter.TaskCreationFilters{
+		filter.NewDraftFilter(),
+		filter.NewBotAuthorFilter(botAllowlist),
+	}
 	startTime := libtime.NewCurrentDateTime().Now()
 
 	trustedAuthors := pkg.ParseTrustedAuthors(a.TrustedAuthors)
@@ -84,7 +89,7 @@ func (a *application) Run(ctx context.Context, _ libsentry.Client) error {
 		a.KafkaBrokers,
 		a.Stage,
 		a.RepoScope,
-		botAllowlist,
+		taskCreationFilter,
 		startTime,
 		trustedAuthors,
 	)

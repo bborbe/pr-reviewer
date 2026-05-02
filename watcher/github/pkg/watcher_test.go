@@ -17,6 +17,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/code-reviewer/watcher/github/pkg"
+	"github.com/bborbe/code-reviewer/watcher/github/pkg/filter"
 	"github.com/bborbe/code-reviewer/watcher/github/pkg/mocks"
 	"github.com/bborbe/code-reviewer/watcher/github/pkg/trust"
 )
@@ -35,7 +36,10 @@ func newTestWatcher(
 		cursorPath,
 		startTime,
 		"bborbe",
-		[]string{"dependabot[bot]"},
+		filter.TaskCreationFilters{
+			filter.NewDraftFilter(),
+			filter.NewBotAuthorFilter([]string{"dependabot[bot]"}),
+		},
 		"dev",
 		fakeMetrics,
 		trustDecision,

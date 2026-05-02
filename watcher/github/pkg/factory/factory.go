@@ -17,6 +17,7 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/bborbe/code-reviewer/watcher/github/pkg"
+	"github.com/bborbe/code-reviewer/watcher/github/pkg/filter"
 	"github.com/bborbe/code-reviewer/watcher/github/pkg/trust"
 )
 
@@ -47,7 +48,7 @@ func CreateWatcher(
 	brokers libkafka.Brokers,
 	stage string,
 	repoScope string,
-	botAllowlist []string,
+	taskCreationFilter filter.TaskCreationFilter,
 	startTime libtime.DateTime,
 	trustedAuthors []string,
 ) (pkg.Watcher, func(), error) {
@@ -66,7 +67,7 @@ func CreateWatcher(
 		pkg.DefaultCursorPath,
 		startTime,
 		repoScope,
-		botAllowlist,
+		taskCreationFilter,
 		stage,
 		pkg.NewMetrics(),
 		trustDecision,

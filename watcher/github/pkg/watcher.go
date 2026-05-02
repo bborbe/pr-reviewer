@@ -13,6 +13,7 @@ import (
 	libtime "github.com/bborbe/time"
 	"github.com/golang/glog"
 
+	"github.com/bborbe/code-reviewer/watcher/github/pkg/filter"
 	"github.com/bborbe/code-reviewer/watcher/github/pkg/trust"
 )
 
@@ -30,34 +31,34 @@ func NewWatcher(
 	cursorPath string,
 	startTime libtime.DateTime,
 	scope string,
-	botAllowlist []string,
+	taskCreationFilter filter.TaskCreationFilter,
 	stage string,
 	metrics Metrics,
 	trustDecision trust.Trust,
 ) Watcher {
 	return &watcher{
-		ghClient:      ghClient,
-		publisher:     pub,
-		cursorPath:    cursorPath,
-		startTime:     startTime,
-		scope:         scope,
-		botAllowlist:  botAllowlist,
-		stage:         stage,
-		metrics:       metrics,
-		trustDecision: trustDecision,
+		ghClient:           ghClient,
+		publisher:          pub,
+		cursorPath:         cursorPath,
+		startTime:          startTime,
+		scope:              scope,
+		taskCreationFilter: taskCreationFilter,
+		stage:              stage,
+		metrics:            metrics,
+		trustDecision:      trustDecision,
 	}
 }
 
 type watcher struct {
-	ghClient      GitHubClient
-	publisher     CommandPublisher
-	cursorPath    string
-	startTime     libtime.DateTime
-	scope         string
-	botAllowlist  []string
-	stage         string
-	metrics       Metrics
-	trustDecision trust.Trust
+	ghClient           GitHubClient
+	publisher          CommandPublisher
+	cursorPath         string
+	startTime          libtime.DateTime
+	scope              string
+	taskCreationFilter filter.TaskCreationFilter
+	stage              string
+	metrics            Metrics
+	trustDecision      trust.Trust
 }
 
 func (w *watcher) Poll(ctx context.Context) error {
@@ -132,7 +133,7 @@ func (w *watcher) processPRs(
 	for _, pr := range allPRs {
 		taskIDStr := DeriveTaskID(pr.Owner, pr.Repo, pr.Number).String()
 
-		if ShouldSkipPR(pr, w.botAllowlist) {
+		if w.taskCreationFilter.Skip(filter.PR{AuthorLogin: pr.AuthorLogin, IsDraft: pr.IsDraft}) {
 			glog.V(3).Infof("skipping pr=%s/%s#%d reason=filtered", pr.Owner, pr.Repo, pr.Number)
 			w.metrics.IncPRPublished("skipped")
 			if known, ok := cursorState.HeadSHAs[taskIDStr]; ok {
