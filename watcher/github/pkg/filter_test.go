@@ -102,4 +102,30 @@ var _ = Describe("Filter", func() {
 			Expect(pkg.ParseBotAllowlist("dependabot[bot],")).To(Equal([]string{"dependabot[bot]"}))
 		})
 	})
+
+	Describe("ParseTrustedAuthors", func() {
+		It("returns nil for empty string", func() {
+			Expect(pkg.ParseTrustedAuthors("")).To(BeNil())
+		})
+
+		It("returns single entry", func() {
+			Expect(pkg.ParseTrustedAuthors("alice")).To(Equal([]string{"alice"}))
+		})
+
+		It("returns multiple comma-separated entries trimmed", func() {
+			Expect(
+				pkg.ParseTrustedAuthors("alice , bob"),
+			).To(Equal([]string{"alice", "bob"}))
+		})
+
+		It("filters out whitespace-only entries", func() {
+			Expect(
+				pkg.ParseTrustedAuthors("alice,  ,bob"),
+			).To(Equal([]string{"alice", "bob"}))
+		})
+
+		It("filters out trailing empty entry from trailing comma", func() {
+			Expect(pkg.ParseTrustedAuthors("alice,")).To(Equal([]string{"alice"}))
+		})
+	})
 })

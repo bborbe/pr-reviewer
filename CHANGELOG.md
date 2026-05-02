@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.22.0
+
+- feat: add `watcher/github/pkg/trust` boolean-combinator package with `Trust` interface, `And`/`Or`/`Not` combinators, `NewAuthorAllowlist` leaf, and `ParseTrustedAuthors` filter helper
+
 ## v0.21.3
 
 ### Fixed
