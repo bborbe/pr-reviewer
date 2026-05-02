@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Introduced composable TaskCreationFilter chain in watcher/github/pkg/filter/ with DraftFilter, BotAuthorFilter, and slice composite, replacing ShouldSkipPR; wired through factory and main with no behavior change; added docs/watcher-decision-chains.md and CHANGELOG entry.
 container: code-reviewer-075-task-creation-filter-chain
 dark-factory-version: dev
 created: "2026-05-02T13:30:00Z"
 queued: "2026-05-02T11:34:54Z"
 started: "2026-05-02T11:34:56Z"
+completed: "2026-05-02T11:42:20Z"
 ---
 
 <summary>
