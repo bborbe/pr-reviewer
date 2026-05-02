@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [012-watcher-author-trust-filter]
 summary: Created watcher/github/pkg/trust package with boolean-combinator Trust interface, And/Or/Not combinators, NewAuthorAllowlist leaf, and added ParseTrustedAuthors to pkg/filter.go with full test coverage
 container: code-reviewer-072-spec-012-trust-framework
@@ -7,6 +7,7 @@ dark-factory-version: dev
 created: "2026-05-02T10:00:00Z"
 queued: "2026-05-02T10:14:28Z"
 started: "2026-05-02T10:14:30Z"
+completed: "2026-05-02T10:18:59Z"
 branch: dark-factory/watcher-author-trust-filter
 ---
 
