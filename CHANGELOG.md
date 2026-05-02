@@ -8,6 +8,16 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.21.3
+
+### Fixed
+- **pr-reviewer**: inline `/coding:pr-review` plugin content into the execution-phase
+  prompt so plugin orchestration actually fires. Previously the wrapper described the
+  slash command in prose, but Claude reads it as documentation and never invokes the
+  plugin — slash commands don't trigger from inside a multi-section structured prompt.
+  The plugin file is now read at runtime, frontmatter stripped, and arguments pre-filled
+  before being concatenated with a verdict-translation footer.
+
 ## v0.21.2
 
 - fix: add pod-level `securityContext.fsGroup: 65534` to `watcher/github/k8s/github-pr-watcher-sts.yaml` so the `datadir` PVC mount is group-owned by the non-root UID, fixing `open /data/cursor.json: permission denied` on every poll cycle

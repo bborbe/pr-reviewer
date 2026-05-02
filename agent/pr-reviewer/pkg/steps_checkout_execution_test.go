@@ -34,7 +34,7 @@ var _ = Describe("checkoutExecutionStep", func() {
 			"sonnet",
 			map[string]string{},
 			claudelib.AllowedTools{"Read"},
-			claudelib.Instructions{},
+			"standard",
 		)
 	})
 
@@ -90,13 +90,28 @@ var _ = Describe("checkoutExecutionStep", func() {
 			})
 		})
 
+		Context("when base_ref is missing from frontmatter", func() {
+			It("returns AgentStatusFailed without propagating error", func() {
+				md, err := agentlib.ParseMarkdown(
+					ctx,
+					"---\nclone_url: https://github.com/example/repo.git\nref: main\ntask_identifier: bd4d883b-0000-0000-0000-000000000001\n---\n# Task\n",
+				)
+				Expect(err).NotTo(HaveOccurred())
+				result, err := step.Run(ctx, md)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).NotTo(BeNil())
+				Expect(result.Status).To(Equal(agentlib.AgentStatusFailed))
+				Expect(result.Message).To(ContainSubstring("base_ref"))
+			})
+		})
+
 		Context("when EnsureWorktree returns an error", func() {
 			It("propagates the error (fail loud)", func() {
 				repoManager.EnsureWorktreeReturns("", fmt.Errorf("clone failed: network error"))
 
 				md, err := agentlib.ParseMarkdown(
 					ctx,
-					"---\nclone_url: https://github.com/example/repo.git\nref: main\ntask_identifier: bd4d883b-0000-0000-0000-000000000001\n---\n# Task\n",
+					"---\nclone_url: https://github.com/example/repo.git\nref: main\nbase_ref: master\ntask_identifier: bd4d883b-0000-0000-0000-000000000001\n---\n# Task\n",
 				)
 				Expect(err).NotTo(HaveOccurred())
 				result, runErr := step.Run(ctx, md)

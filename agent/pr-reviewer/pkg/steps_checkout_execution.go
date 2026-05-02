@@ -13,6 +13,7 @@ import (
 	"github.com/bborbe/errors"
 
 	"github.com/bborbe/code-reviewer/agent/pr-reviewer/pkg/git"
+	"github.com/bborbe/code-reviewer/agent/pr-reviewer/pkg/prompts"
 )
 
 // checkoutExecutionStep is the execution phase step that checks out the
@@ -24,7 +25,7 @@ type checkoutExecutionStep struct {
 	model           claudelib.ClaudeModel
 	env             map[string]string
 	allowedTools    claudelib.AllowedTools
-	instructions    claudelib.Instructions
+	reviewMode      string
 }
 
 // NewCheckoutExecutionStep constructs the execution-phase step that wires
@@ -36,7 +37,7 @@ func NewCheckoutExecutionStep(
 	model claudelib.ClaudeModel,
 	env map[string]string,
 	allowedTools claudelib.AllowedTools,
-	instructions claudelib.Instructions,
+	reviewMode string,
 ) agentlib.Step {
 	return &checkoutExecutionStep{
 		repoManager:     repoManager,
@@ -45,7 +46,7 @@ func NewCheckoutExecutionStep(
 		model:           model,
 		env:             env,
 		allowedTools:    allowedTools,
-		instructions:    instructions,
+		reviewMode:      reviewMode,
 	}
 }
 
@@ -67,6 +68,7 @@ func (s *checkoutExecutionStep) Run(
 	cloneURL, _ := md.Frontmatter.String("clone_url")
 	ref, _ := md.Frontmatter.String("ref")
 	taskID, _ := md.Frontmatter.String("task_identifier")
+	baseRef, _ := md.Frontmatter.String("base_ref")
 
 	if cloneURL == "" {
 		return &agentlib.Result{
@@ -78,6 +80,12 @@ func (s *checkoutExecutionStep) Run(
 		return &agentlib.Result{
 			Status:  agentlib.AgentStatusFailed,
 			Message: "execution step: ref is missing from task frontmatter",
+		}, nil
+	}
+	if baseRef == "" {
+		return &agentlib.Result{
+			Status:  agentlib.AgentStatusFailed,
+			Message: "execution step: base_ref is missing from task frontmatter",
 		}, nil
 	}
 
@@ -93,6 +101,31 @@ func (s *checkoutExecutionStep) Run(
 		)
 	}
 
+	instructions, err := prompts.BuildExecutionInstructions(
+		ctx,
+		s.claudeConfigDir,
+		s.reviewMode,
+		baseRef,
+	)
+	if err != nil {
+		return nil, errors.Wrapf(
+			ctx,
+			err,
+			"build execution instructions base_ref=%s mode=%s",
+			baseRef,
+			s.reviewMode,
+		)
+	}
+
+	return s.runClaude(ctx, md, worktreePath, instructions)
+}
+
+func (s *checkoutExecutionStep) runClaude(
+	ctx context.Context,
+	md *agentlib.Markdown,
+	worktreePath string,
+	instructions claudelib.Instructions,
+) (*agentlib.Result, error) {
 	runner := claudelib.NewClaudeRunner(claudelib.ClaudeRunnerConfig{
 		ClaudeConfigDir:  s.claudeConfigDir,
 		AllowedTools:     s.allowedTools,
@@ -106,8 +139,7 @@ func (s *checkoutExecutionStep) Run(
 		return nil, errors.Wrapf(ctx, err, "execution marshal task")
 	}
 
-	prompt := claudelib.BuildPrompt(s.instructions.String(), nil, taskContent)
-
+	prompt := claudelib.BuildPrompt(instructions.String(), nil, taskContent)
 	runResult, runErr := runner.Run(ctx, prompt)
 	if runErr != nil {
 		return &agentlib.Result{

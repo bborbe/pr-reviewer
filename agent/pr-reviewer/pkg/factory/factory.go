@@ -49,10 +49,15 @@ var (
 		"Bash(git diff:*)", "Bash(git log:*)", "Bash(git show:*)",
 		"Bash(gh pr view:*)", "Bash(gh pr diff:*)", "Bash(gh pr list:*)",
 	}
-	// Sub-agent allowlist audit (spec-011): each coding:* sub-agent dispatched by
-	// /coding:pr-review declares read-only tools only (Read, Grep, Glob, restricted
-	// Bash for analysis). No Write, Edit, curl, wget, or network-exfil primitives.
-	// Verified by inspecting ~/.claude/plugins/marketplaces/coding/agents/*.md.
+	// Sub-agent allowlist audit (spec-011 + inline-plugin fix): the inlined
+	// /coding:pr-review content (assembled per-task by the execution step)
+	// dispatches specialist sub-agents via Task. Each coding:* sub-agent
+	// declares its own read-only tools (Read, Grep, Glob, restricted Bash;
+	// no Write, Edit, curl, wget, nc). Verified by inspecting plugin agent
+	// definitions under
+	// ~/.claude/plugins/marketplaces/coding/agents/*.md. The tool set below
+	// mirrors the plugin's `allowed-tools` frontmatter so the inlined body
+	// has the same capabilities as a real /coding:pr-review invocation.
 	executionTools = claudelib.AllowedTools{
 		"Task",
 		"Bash(git diff:*)",
@@ -162,7 +167,7 @@ func CreateAgent(
 		model,
 		env,
 		executionTools,
-		prompts.BuildExecutionInstructions(reviewMode),
+		reviewMode,
 	)
 	reviewStep := prpkg.NewReviewStep(
 		CreateClaudeRunner(claudeConfigDir, agentDir, model, env, reviewTools),
