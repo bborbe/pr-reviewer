@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: ["011"]
 summary: Inlined /coding:pr-review plugin content into the execution-phase prompt by reading the plugin file at runtime in checkoutExecutionStep.Run, stripping YAML frontmatter, prepending a pre-filled-arguments header, and appending a verdict-translation footer — so plugin orchestration runs as native instructions instead of being described as a prose slash command.
 container: code-reviewer-071-fix-inline-coding-pr-review-into-execution-prompt
@@ -7,6 +7,7 @@ dark-factory-version: dev
 created: "2026-05-02T09:00:00Z"
 queued: "2026-05-02T09:02:03Z"
 started: "2026-05-02T09:03:31Z"
+completed: "2026-05-02T09:12:58Z"
 ---
 <summary>
 - Slash commands embedded inside structured prompts are read as documentation, not invoked. v0.21.0 wired `/coding:pr-review` into the execution wrapper but it never actually fires; Claude just runs ad-hoc `git diff` and writes a generic verdict.
