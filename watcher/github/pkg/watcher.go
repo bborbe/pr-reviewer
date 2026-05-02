@@ -12,6 +12,8 @@ import (
 	"github.com/bborbe/errors"
 	libtime "github.com/bborbe/time"
 	"github.com/golang/glog"
+
+	"github.com/bborbe/code-reviewer/watcher/github/pkg/trust"
 )
 
 //counterfeiter:generate -o mocks/watcher.go --fake-name Watcher . Watcher
@@ -31,28 +33,31 @@ func NewWatcher(
 	botAllowlist []string,
 	stage string,
 	metrics Metrics,
+	trustDecision trust.Trust,
 ) Watcher {
 	return &watcher{
-		ghClient:     ghClient,
-		publisher:    pub,
-		cursorPath:   cursorPath,
-		startTime:    startTime,
-		scope:        scope,
-		botAllowlist: botAllowlist,
-		stage:        stage,
-		metrics:      metrics,
+		ghClient:      ghClient,
+		publisher:     pub,
+		cursorPath:    cursorPath,
+		startTime:     startTime,
+		scope:         scope,
+		botAllowlist:  botAllowlist,
+		stage:         stage,
+		metrics:       metrics,
+		trustDecision: trustDecision,
 	}
 }
 
 type watcher struct {
-	ghClient     GitHubClient
-	publisher    CommandPublisher
-	cursorPath   string
-	startTime    libtime.DateTime
-	scope        string
-	botAllowlist []string
-	stage        string
-	metrics      Metrics
+	ghClient      GitHubClient
+	publisher     CommandPublisher
+	cursorPath    string
+	startTime     libtime.DateTime
+	scope         string
+	botAllowlist  []string
+	stage         string
+	metrics       Metrics
+	trustDecision trust.Trust
 }
 
 func (w *watcher) Poll(ctx context.Context) error {
@@ -184,19 +189,42 @@ func (w *watcher) publishCreate(
 	pr PullRequest,
 	taskIDStr, headSHA string,
 ) bool {
-	cmd := agentlib.CreateTaskCommand{
-		TaskIdentifier: agentlib.TaskIdentifier(taskIDStr),
-		Frontmatter:    buildFrontmatter(pr, taskIDStr, w.stage),
-		Body:           buildTaskBody(pr),
+	author := pr.AuthorLogin
+
+	trustResult, err := w.trustDecision.IsTrusted(ctx, trust.PR{AuthorLogin: author})
+	if err != nil {
+		glog.Errorf("trust check failed pr=%s err=%v", pr.HTMLURL, err)
+		w.metrics.IncPRPublished("error")
+		return false
 	}
+
+	var cmd agentlib.CreateTaskCommand
+	if trustResult.Success() {
+		cmd = agentlib.CreateTaskCommand{
+			TaskIdentifier: agentlib.TaskIdentifier(taskIDStr),
+			Frontmatter:    buildFrontmatter(pr, taskIDStr, w.stage),
+			Body:           buildTaskBody(pr),
+		}
+	} else {
+		if author == "" {
+			author = "(unknown)"
+		}
+		glog.V(2).Infof("untrusted author=%q trust=%s pr=%s", author, trustResult.Description(), pr.HTMLURL)
+		cmd = agentlib.CreateTaskCommand{
+			TaskIdentifier: agentlib.TaskIdentifier(taskIDStr),
+			Frontmatter:    buildHumanReviewFrontmatter(pr, taskIDStr, w.stage),
+			Body:           buildUntrustedBody(author, trustResult.Description()),
+		}
+	}
+
 	if err := w.publisher.PublishCreate(ctx, cmd); err != nil {
 		glog.Errorf("publish create-task failed pr=%s err=%v", pr.HTMLURL, err)
 		w.metrics.IncPRPublished("error")
 		return false
 	}
 	cursorState.HeadSHAs[taskIDStr] = headSHA
-	glog.V(2).
-		Infof("published CreateTaskCommand pr=%s/%s#%d taskID=%s", pr.Owner, pr.Repo, pr.Number, taskIDStr)
+	glog.V(2).Infof("published CreateTaskCommand pr=%s/%s#%d taskID=%s trusted=%t",
+		pr.Owner, pr.Repo, pr.Number, taskIDStr, trustResult.Success())
 	w.metrics.IncPRPublished("create")
 	return true
 }
@@ -207,15 +235,45 @@ func (w *watcher) publishForcePush(
 	pr PullRequest,
 	taskIDStr, oldSHA, newSHA string,
 ) bool {
+	author := pr.AuthorLogin
+
+	trustResult, err := w.trustDecision.IsTrusted(ctx, trust.PR{AuthorLogin: author})
+	if err != nil {
+		glog.Errorf("trust check failed pr=%s err=%v", pr.HTMLURL, err)
+		w.metrics.IncPRPublished("error")
+		return false
+	}
+
 	heading := fmt.Sprintf("## Outdated by force-push %s", oldSHA)
-	cmd := agentlib.UpdateFrontmatterCommand{
-		TaskIdentifier: agentlib.TaskIdentifier(taskIDStr),
-		Updates: agentlib.TaskFrontmatter{
+
+	var updates agentlib.TaskFrontmatter
+	var bodySection *agentlib.BodySection
+
+	if trustResult.Success() {
+		updates = agentlib.TaskFrontmatter{
 			"phase":         "planning",
 			"status":        "in_progress",
 			"trigger_count": 0,
-		},
-		Body: &agentlib.BodySection{Heading: heading, Section: heading + "\n"},
+		}
+		bodySection = &agentlib.BodySection{Heading: heading, Section: heading + "\n"}
+	} else {
+		if author == "" {
+			author = "(unknown)"
+		}
+		glog.V(2).Infof("untrusted force-push author=%q trust=%s pr=%s", author, trustResult.Description(), pr.HTMLURL)
+		updates = agentlib.TaskFrontmatter{
+			"phase":         "human_review",
+			"status":        "todo",
+			"trigger_count": 0,
+		}
+		section := heading + "\n" + buildUntrustedBody(author, trustResult.Description())
+		bodySection = &agentlib.BodySection{Heading: heading, Section: section}
+	}
+
+	cmd := agentlib.UpdateFrontmatterCommand{
+		TaskIdentifier: agentlib.TaskIdentifier(taskIDStr),
+		Updates:        updates,
+		Body:           bodySection,
 	}
 	if err := w.publisher.PublishUpdateFrontmatter(ctx, cmd); err != nil {
 		glog.Errorf("publish update-frontmatter failed pr=%s err=%v", pr.HTMLURL, err)
@@ -223,8 +281,8 @@ func (w *watcher) publishForcePush(
 		return false
 	}
 	cursorState.HeadSHAs[taskIDStr] = newSHA
-	glog.V(2).
-		Infof("published UpdateFrontmatterCommand pr=%s/%s#%d taskID=%s", pr.Owner, pr.Repo, pr.Number, taskIDStr)
+	glog.V(2).Infof("published UpdateFrontmatterCommand pr=%s/%s#%d taskID=%s trusted=%t",
+		pr.Owner, pr.Repo, pr.Number, taskIDStr, trustResult.Success())
 	w.metrics.IncPRPublished("update_frontmatter")
 	return true
 }
@@ -262,4 +320,26 @@ func buildFrontmatter(
 		"task_identifier": taskIDStr,
 		"title":           pr.Title,
 	}
+}
+
+func buildHumanReviewFrontmatter(
+	pr PullRequest,
+	taskIDStr, stage string,
+) agentlib.TaskFrontmatter {
+	return agentlib.TaskFrontmatter{
+		"assignee":        "pr-reviewer-agent",
+		"phase":           "human_review",
+		"status":          "todo",
+		"stage":           stage,
+		"task_identifier": taskIDStr,
+		"title":           pr.Title,
+	}
+}
+
+func buildUntrustedBody(author, reasons string) string {
+	return fmt.Sprintf(
+		"## Untrusted author\n\nThis PR is by GitHub user **%s** which did not pass the trust check:\n\n- %s\n\nTo auto-process this PR, edit the frontmatter above:\n- `phase: in_progress`\n- `status: in_progress`\n\nTo dismiss, set `status: aborted`.\n",
+		author,
+		reasons,
+	)
 }

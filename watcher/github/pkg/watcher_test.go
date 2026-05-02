@@ -18,6 +18,7 @@ import (
 
 	"github.com/bborbe/code-reviewer/watcher/github/pkg"
 	"github.com/bborbe/code-reviewer/watcher/github/pkg/mocks"
+	"github.com/bborbe/code-reviewer/watcher/github/pkg/trust"
 )
 
 func newTestWatcher(
@@ -26,6 +27,7 @@ func newTestWatcher(
 	cursorPath string,
 	startTime libtime.DateTime,
 	fakeMetrics *mocks.Metrics,
+	trustDecision trust.Trust,
 ) pkg.Watcher {
 	return pkg.NewWatcher(
 		ghClient,
@@ -36,6 +38,7 @@ func newTestWatcher(
 		[]string{"dependabot[bot]"},
 		"dev",
 		fakeMetrics,
+		trustDecision,
 	)
 }
 
@@ -76,7 +79,14 @@ var _ = Describe("pkg.Watcher", func() {
 				RateRemaining: 100,
 			}, nil)
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
+			w := newTestWatcher(
+				ghClient,
+				pub,
+				cursorPath,
+				startTime,
+				fakeMetrics,
+				trust.NewAuthorAllowlist([]string{"alice"}),
+			)
 			err := w.Poll(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pub.PublishCreateCallCount()).To(Equal(0))
@@ -109,7 +119,14 @@ var _ = Describe("pkg.Watcher", func() {
 			ghClient.GetHeadSHAReturns("abc123", nil)
 			pub.PublishCreateReturns(nil)
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
+			w := newTestWatcher(
+				ghClient,
+				pub,
+				cursorPath,
+				startTime,
+				fakeMetrics,
+				trust.NewAuthorAllowlist([]string{"alice"}),
+			)
 			err := w.Poll(ctx)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -143,7 +160,14 @@ var _ = Describe("pkg.Watcher", func() {
 			ghClient.GetHeadSHAReturns("sha-existing", nil)
 
 			// Pre-populate cursor with the same SHA
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
+			w := newTestWatcher(
+				ghClient,
+				pub,
+				cursorPath,
+				startTime,
+				fakeMetrics,
+				trust.NewAuthorAllowlist([]string{"alice"}),
+			)
 			// First poll: creates the entry
 			pub.PublishCreateReturns(nil)
 			Expect(w.Poll(ctx)).NotTo(HaveOccurred())
@@ -151,7 +175,14 @@ var _ = Describe("pkg.Watcher", func() {
 
 			// Second poll: same SHA, no publish
 			pub = new(mocks.CommandPublisher)
-			w = newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
+			w = newTestWatcher(
+				ghClient,
+				pub,
+				cursorPath,
+				startTime,
+				fakeMetrics,
+				trust.NewAuthorAllowlist([]string{"alice"}),
+			)
 			Expect(w.Poll(ctx)).NotTo(HaveOccurred())
 			Expect(pub.PublishCreateCallCount()).To(Equal(0))
 			Expect(pub.PublishUpdateFrontmatterCallCount()).To(Equal(0))
@@ -178,7 +209,14 @@ var _ = Describe("pkg.Watcher", func() {
 			ghClient.GetHeadSHAReturns("old-sha", nil)
 			pub.PublishCreateReturns(nil)
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
+			w := newTestWatcher(
+				ghClient,
+				pub,
+				cursorPath,
+				startTime,
+				fakeMetrics,
+				trust.NewAuthorAllowlist([]string{"alice"}),
+			)
 			Expect(w.Poll(ctx)).NotTo(HaveOccurred())
 			Expect(pub.PublishCreateCallCount()).To(Equal(1))
 
@@ -187,7 +225,14 @@ var _ = Describe("pkg.Watcher", func() {
 			ghClient.GetHeadSHAReturns("new-sha", nil)
 			pub.PublishUpdateFrontmatterReturns(nil)
 
-			w = newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
+			w = newTestWatcher(
+				ghClient,
+				pub,
+				cursorPath,
+				startTime,
+				fakeMetrics,
+				trust.NewAuthorAllowlist([]string{"alice"}),
+			)
 			Expect(w.Poll(ctx)).NotTo(HaveOccurred())
 
 			Expect(pub.PublishUpdateFrontmatterCallCount()).To(Equal(1))
@@ -214,7 +259,14 @@ var _ = Describe("pkg.Watcher", func() {
 				RateRemaining: 100,
 			}, nil)
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
+			w := newTestWatcher(
+				ghClient,
+				pub,
+				cursorPath,
+				startTime,
+				fakeMetrics,
+				trust.NewAuthorAllowlist([]string{"alice"}),
+			)
 			Expect(w.Poll(ctx)).NotTo(HaveOccurred())
 			Expect(pub.PublishCreateCallCount()).To(Equal(0))
 			Expect(pub.PublishUpdateFrontmatterCallCount()).To(Equal(0))
@@ -237,7 +289,14 @@ var _ = Describe("pkg.Watcher", func() {
 				RateRemaining: 100,
 			}, nil)
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
+			w := newTestWatcher(
+				ghClient,
+				pub,
+				cursorPath,
+				startTime,
+				fakeMetrics,
+				trust.NewAuthorAllowlist([]string{"alice"}),
+			)
 			Expect(w.Poll(ctx)).NotTo(HaveOccurred())
 			Expect(pub.PublishCreateCallCount()).To(Equal(0))
 		})
@@ -247,7 +306,14 @@ var _ = Describe("pkg.Watcher", func() {
 		It("Poll returns nil, cursor unchanged, no publish calls", func() {
 			ghClient.SearchPRsReturns(pkg.SearchResult{}, errors.New("network timeout"))
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
+			w := newTestWatcher(
+				ghClient,
+				pub,
+				cursorPath,
+				startTime,
+				fakeMetrics,
+				trust.NewAuthorAllowlist([]string{"alice"}),
+			)
 			err := w.Poll(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pub.PublishCreateCallCount()).To(Equal(0))
@@ -277,7 +343,14 @@ var _ = Describe("pkg.Watcher", func() {
 			ghClient.GetHeadSHAReturns("sha123", nil)
 			pub.PublishCreateReturns(errors.New("kafka unavailable"))
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
+			w := newTestWatcher(
+				ghClient,
+				pub,
+				cursorPath,
+				startTime,
+				fakeMetrics,
+				trust.NewAuthorAllowlist([]string{"alice"}),
+			)
 			err := w.Poll(ctx)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -285,7 +358,14 @@ var _ = Describe("pkg.Watcher", func() {
 			// Verify by doing a second poll and checking PublishCreate is called again
 			pub2 := new(mocks.CommandPublisher)
 			pub2.PublishCreateReturns(nil)
-			w2 := newTestWatcher(ghClient, pub2, cursorPath, startTime, fakeMetrics)
+			w2 := newTestWatcher(
+				ghClient,
+				pub2,
+				cursorPath,
+				startTime,
+				fakeMetrics,
+				trust.NewAuthorAllowlist([]string{"alice"}),
+			)
 			Expect(w2.Poll(ctx)).NotTo(HaveOccurred())
 			Expect(pub2.PublishCreateCallCount()).To(Equal(1))
 		})
@@ -310,7 +390,14 @@ var _ = Describe("pkg.Watcher", func() {
 				return pkg.SearchResult{}, nil
 			}
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
+			w := newTestWatcher(
+				ghClient,
+				pub,
+				cursorPath,
+				startTime,
+				fakeMetrics,
+				trust.NewAuthorAllowlist([]string{"alice"}),
+			)
 			err := w.Poll(cancelCtx)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -323,7 +410,14 @@ var _ = Describe("pkg.Watcher", func() {
 				RateRemaining: 100,
 			}, nil)
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
+			w := newTestWatcher(
+				ghClient,
+				pub,
+				cursorPath,
+				startTime,
+				fakeMetrics,
+				trust.NewAuthorAllowlist([]string{"alice"}),
+			)
 			Expect(w.Poll(ctx)).NotTo(HaveOccurred())
 
 			Expect(ghClient.SearchPRsCallCount()).To(Equal(1))
@@ -341,7 +435,14 @@ var _ = Describe("pkg.Watcher", func() {
 			Expect(os.Chmod(cursorPath, 0000)).To(Succeed())
 			defer func() { _ = os.Chmod(cursorPath, 0600) }()
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
+			w := newTestWatcher(
+				ghClient,
+				pub,
+				cursorPath,
+				startTime,
+				fakeMetrics,
+				trust.NewAuthorAllowlist([]string{"alice"}),
+			)
 			err := w.Poll(ctx)
 			Expect(err).To(HaveOccurred())
 		})
@@ -375,7 +476,14 @@ var _ = Describe("pkg.Watcher", func() {
 			ghClient.GetHeadSHAReturns("sha-initial", nil)
 			pub.PublishCreateReturns(nil)
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
+			w := newTestWatcher(
+				ghClient,
+				pub,
+				cursorPath,
+				startTime,
+				fakeMetrics,
+				trust.NewAuthorAllowlist([]string{"alice"}),
+			)
 			Expect(w.Poll(ctx)).NotTo(HaveOccurred())
 			Expect(pub.PublishCreateCallCount()).To(Equal(2))
 
@@ -387,7 +495,14 @@ var _ = Describe("pkg.Watcher", func() {
 			}, nil)
 			pub2 := new(mocks.CommandPublisher)
 			pub2.PublishCreateReturns(nil)
-			w2 := newTestWatcher(ghClient, pub2, cursorPath, startTime, fakeMetrics)
+			w2 := newTestWatcher(
+				ghClient,
+				pub2,
+				cursorPath,
+				startTime,
+				fakeMetrics,
+				trust.NewAuthorAllowlist([]string{"alice"}),
+			)
 			Expect(w2.Poll(ctx)).NotTo(HaveOccurred())
 
 			cursor, err := pkg.LoadCursor(ctx, cursorPath, startTime)
@@ -419,7 +534,14 @@ var _ = Describe("pkg.Watcher", func() {
 			ghClient.GetHeadSHAReturns("sha-v1", nil)
 			pub.PublishCreateReturns(nil)
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
+			w := newTestWatcher(
+				ghClient,
+				pub,
+				cursorPath,
+				startTime,
+				fakeMetrics,
+				trust.NewAuthorAllowlist([]string{"alice"}),
+			)
 			Expect(w.Poll(ctx)).NotTo(HaveOccurred())
 			Expect(pub.PublishCreateCallCount()).To(Equal(1))
 
@@ -427,7 +549,14 @@ var _ = Describe("pkg.Watcher", func() {
 			ghClient.GetHeadSHAReturns("sha-v2", nil)
 			pub2 := new(mocks.CommandPublisher)
 			pub2.PublishUpdateFrontmatterReturns(errors.New("kafka unavailable"))
-			w2 := newTestWatcher(ghClient, pub2, cursorPath, startTime, fakeMetrics)
+			w2 := newTestWatcher(
+				ghClient,
+				pub2,
+				cursorPath,
+				startTime,
+				fakeMetrics,
+				trust.NewAuthorAllowlist([]string{"alice"}),
+			)
 			Expect(w2.Poll(ctx)).NotTo(HaveOccurred())
 			Expect(pub2.PublishUpdateFrontmatterCallCount()).To(Equal(1))
 
@@ -455,7 +584,14 @@ var _ = Describe("pkg.Watcher", func() {
 			}, nil)
 			ghClient.GetHeadSHAReturns("", errors.New("github api error"))
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
+			w := newTestWatcher(
+				ghClient,
+				pub,
+				cursorPath,
+				startTime,
+				fakeMetrics,
+				trust.NewAuthorAllowlist([]string{"alice"}),
+			)
 			Expect(w.Poll(ctx)).NotTo(HaveOccurred())
 			Expect(pub.PublishCreateCallCount()).To(Equal(0))
 
@@ -486,7 +622,14 @@ var _ = Describe("pkg.Watcher", func() {
 			ghClient.GetHeadSHAReturns("sha-dedup", nil)
 			pub.PublishCreateReturns(nil)
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
+			w := newTestWatcher(
+				ghClient,
+				pub,
+				cursorPath,
+				startTime,
+				fakeMetrics,
+				trust.NewAuthorAllowlist([]string{"alice"}),
+			)
 			Expect(w.Poll(ctx)).NotTo(HaveOccurred())
 
 			Expect(ghClient.GetHeadSHACallCount()).To(Equal(1))
@@ -508,6 +651,7 @@ var _ = Describe("pkg.Watcher", func() {
 				"/nonexistent/path/cursor.json",
 				startTime,
 				fakeMetrics,
+				trust.NewAuthorAllowlist([]string{"alice"}),
 			)
 			err := w.Poll(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -533,7 +677,14 @@ var _ = Describe("pkg.Watcher", func() {
 			ghClient.GetHeadSHAReturns("sha1", nil)
 			pub.PublishCreateReturns(nil)
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
+			w := newTestWatcher(
+				ghClient,
+				pub,
+				cursorPath,
+				startTime,
+				fakeMetrics,
+				trust.NewAuthorAllowlist([]string{"alice"}),
+			)
 			Expect(w.Poll(ctx)).NotTo(HaveOccurred())
 			Expect(ghClient.GetHeadSHACallCount()).To(Equal(1))
 		})
@@ -557,7 +708,14 @@ var _ = Describe("pkg.Watcher", func() {
 			ghClient.GetHeadSHAReturns("sha1", nil)
 			pub.PublishCreateReturns(nil)
 
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
+			w := newTestWatcher(
+				ghClient,
+				pub,
+				cursorPath,
+				startTime,
+				fakeMetrics,
+				trust.NewAuthorAllowlist([]string{"alice"}),
+			)
 			Expect(w.Poll(ctx)).NotTo(HaveOccurred())
 
 			Expect(pub.PublishCreateCallCount()).To(Equal(1))
@@ -589,14 +747,28 @@ var _ = Describe("pkg.Watcher", func() {
 			}, nil)
 			ghClient.GetHeadSHAReturns("sha-v1", nil)
 			pub.PublishCreateReturns(nil)
-			w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics)
+			w := newTestWatcher(
+				ghClient,
+				pub,
+				cursorPath,
+				startTime,
+				fakeMetrics,
+				trust.NewAuthorAllowlist([]string{"alice"}),
+			)
 			Expect(w.Poll(ctx)).NotTo(HaveOccurred())
 
 			// Second poll: force-push
 			pub2 := new(mocks.CommandPublisher)
 			ghClient.GetHeadSHAReturns("sha-v2", nil)
 			pub2.PublishUpdateFrontmatterReturns(nil)
-			w2 := newTestWatcher(ghClient, pub2, cursorPath, startTime, fakeMetrics)
+			w2 := newTestWatcher(
+				ghClient,
+				pub2,
+				cursorPath,
+				startTime,
+				fakeMetrics,
+				trust.NewAuthorAllowlist([]string{"alice"}),
+			)
 			Expect(w2.Poll(ctx)).NotTo(HaveOccurred())
 
 			Expect(pub2.PublishUpdateFrontmatterCallCount()).To(Equal(1))
@@ -610,6 +782,127 @@ var _ = Describe("pkg.Watcher", func() {
 			_, cmd2 := pub2.PublishUpdateFrontmatterArgsForCall(0)
 			taskID = cmd2.TaskIdentifier
 			Expect(string(taskID)).NotTo(BeEmpty())
+		})
+	})
+
+	Describe("Trust decisions", func() {
+		var (
+			pr pkg.PullRequest
+		)
+
+		BeforeEach(func() {
+			pr = pkg.PullRequest{
+				Number:      10,
+				Owner:       "bborbe",
+				Repo:        "repo",
+				Title:       "some PR",
+				HTMLURL:     "https://github.com/bborbe/repo/pull/10",
+				AuthorLogin: "alice",
+				UpdatedAt:   libtime.DateTime(time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)),
+			}
+			ghClient.SearchPRsReturns(pkg.SearchResult{
+				PullRequests:  []pkg.PullRequest{pr},
+				HasNextPage:   false,
+				RateRemaining: 100,
+			}, nil)
+			ghClient.GetHeadSHAReturns("sha1", nil)
+		})
+
+		Describe("Trusted-author new PR", func() {
+			It("publishes CreateTaskCommand with planning/in_progress frontmatter", func() {
+				pub.PublishCreateReturns(nil)
+				w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics,
+					trust.NewAuthorAllowlist([]string{"alice"}))
+				Expect(w.Poll(ctx)).NotTo(HaveOccurred())
+				Expect(pub.PublishCreateCallCount()).To(Equal(1))
+				_, cmd := pub.PublishCreateArgsForCall(0)
+				Expect(cmd.Frontmatter["phase"]).To(Equal("planning"))
+				Expect(cmd.Frontmatter["status"]).To(Equal("in_progress"))
+			})
+		})
+
+		Describe("Untrusted-author new PR", func() {
+			It(
+				"publishes CreateTaskCommand with human_review/todo frontmatter and untrusted body",
+				func() {
+					pub.PublishCreateReturns(nil)
+					w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics,
+						trust.NewAuthorAllowlist([]string{"bob"}))
+					Expect(w.Poll(ctx)).NotTo(HaveOccurred())
+					Expect(pub.PublishCreateCallCount()).To(Equal(1))
+					_, cmd := pub.PublishCreateArgsForCall(0)
+					Expect(cmd.Frontmatter["phase"]).To(Equal("human_review"))
+					Expect(cmd.Frontmatter["status"]).To(Equal("todo"))
+					Expect(cmd.Body).To(ContainSubstring("alice"))
+					Expect(cmd.Body).To(ContainSubstring("Untrusted author"))
+					Expect(cmd.Body).To(ContainSubstring("phase: in_progress"))
+				},
+			)
+		})
+
+		Describe("Untrusted-author force-push", func() {
+			It("re-evaluates trust and preserves human_review/todo state", func() {
+				pub.PublishCreateReturns(nil)
+				w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics,
+					trust.NewAuthorAllowlist([]string{"bob"}))
+				Expect(w.Poll(ctx)).NotTo(HaveOccurred())
+				Expect(pub.PublishCreateCallCount()).To(Equal(1))
+
+				pub2 := new(mocks.CommandPublisher)
+				ghClient.GetHeadSHAReturns("sha2", nil)
+				pub2.PublishUpdateFrontmatterReturns(nil)
+				w2 := newTestWatcher(ghClient, pub2, cursorPath, startTime, fakeMetrics,
+					trust.NewAuthorAllowlist([]string{"bob"}))
+				Expect(w2.Poll(ctx)).NotTo(HaveOccurred())
+				Expect(pub2.PublishUpdateFrontmatterCallCount()).To(Equal(1))
+				_, cmd := pub2.PublishUpdateFrontmatterArgsForCall(0)
+				Expect(cmd.Updates["phase"]).To(Equal("human_review"))
+				Expect(cmd.Updates["status"]).To(Equal("todo"))
+			})
+		})
+
+		Describe("Trust check returns an error", func() {
+			It(
+				"skips the PR, no publish, Poll returns nil, cursor NOT advanced past failed PR",
+				func() {
+					fakeErr := errors.New("github rate limit")
+					fakeTrust := new(mocks.Trust)
+					fakeTrust.IsTrustedReturns(nil, fakeErr)
+					w := newTestWatcher(
+						ghClient,
+						pub,
+						cursorPath,
+						startTime,
+						fakeMetrics,
+						fakeTrust,
+					)
+					Expect(w.Poll(ctx)).NotTo(HaveOccurred())
+					Expect(pub.PublishCreateCallCount()).To(Equal(0))
+					taskIDStr := pkg.DeriveTaskID(pr.Owner, pr.Repo, pr.Number).String()
+					cursor, loadErr := pkg.LoadCursor(ctx, cursorPath, startTime)
+					Expect(loadErr).NotTo(HaveOccurred())
+					Expect(cursor.HeadSHAs).NotTo(HaveKey(taskIDStr))
+				},
+			)
+		})
+
+		Describe("PR with missing AuthorLogin (defensive)", func() {
+			It("treats as untrusted and publishes human_review task", func() {
+				pr.AuthorLogin = ""
+				ghClient.SearchPRsReturns(pkg.SearchResult{
+					PullRequests:  []pkg.PullRequest{pr},
+					HasNextPage:   false,
+					RateRemaining: 100,
+				}, nil)
+				pub.PublishCreateReturns(nil)
+				w := newTestWatcher(ghClient, pub, cursorPath, startTime, fakeMetrics,
+					trust.NewAuthorAllowlist([]string{"alice"}))
+				Expect(w.Poll(ctx)).NotTo(HaveOccurred())
+				Expect(pub.PublishCreateCallCount()).To(Equal(1))
+				_, cmd := pub.PublishCreateArgsForCall(0)
+				Expect(cmd.Frontmatter["phase"]).To(Equal("human_review"))
+				Expect(cmd.Body).To(ContainSubstring("unknown"))
+			})
 		})
 	})
 })

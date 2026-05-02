@@ -17,6 +17,7 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/bborbe/code-reviewer/watcher/github/pkg"
+	"github.com/bborbe/code-reviewer/watcher/github/pkg/trust"
 )
 
 // CreateKafkaPublisher constructs a CommandPublisher backed by a Kafka sync producer.
@@ -48,12 +49,15 @@ func CreateWatcher(
 	repoScope string,
 	botAllowlist []string,
 	startTime libtime.DateTime,
+	trustedAuthors []string,
 ) (pkg.Watcher, func(), error) {
 	branch := base.Branch(stage)
 	pub, cleanup, err := CreateKafkaPublisher(ctx, brokers, branch)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, "create kafka publisher")
 	}
+
+	trustDecision := trust.And{trust.NewAuthorAllowlist(trustedAuthors)}
 
 	ghClient := pkg.NewGitHubClient(ghToken)
 	w := pkg.NewWatcher(
@@ -65,6 +69,7 @@ func CreateWatcher(
 		botAllowlist,
 		stage,
 		pkg.NewMetrics(),
+		trustDecision,
 	)
 	return w, cleanup, nil
 }

@@ -1,8 +1,12 @@
 ---
-status: approved
+status: committing
 spec: [012-watcher-author-trust-filter]
+summary: 'Wired trust framework into github-pr-watcher: added TRUSTED_AUTHORS config and startup validation in main.go, composed trust.And{NewAuthorAllowlist} in factory, added trustDecision parameter to NewWatcher and watcher struct, implemented trust-aware publishCreate and publishForcePush with human_review routing for untrusted authors, and added 5 new test cases covering trusted/untrusted/force-push/error/missing-author scenarios.'
+container: code-reviewer-073-spec-012-wire-trust
+dark-factory-version: dev
 created: "2026-05-02T10:00:00Z"
 queued: "2026-05-02T10:14:28Z"
+started: "2026-05-02T10:19:02Z"
 branch: dark-factory/watcher-author-trust-filter
 ---
 

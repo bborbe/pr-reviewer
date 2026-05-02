@@ -46,13 +46,14 @@ type application struct {
 	SentryDSN   string `required:"false" arg:"sentry-dsn"   env:"SENTRY_DSN"   usage:"SentryDSN"    display:"length"`
 	SentryProxy string `required:"false" arg:"sentry-proxy" env:"SENTRY_PROXY" usage:"Sentry Proxy"`
 
-	Listen       string           `required:"false" arg:"listen"        env:"LISTEN"        usage:"HTTP listen address (healthz/readiness/metrics)" default:":9090"`
-	GHToken      string           `required:"true"  arg:"gh-token"      env:"GH_TOKEN"      usage:"GitHub token (read scope sufficient)"                                                    display:"length"`
-	KafkaBrokers libkafka.Brokers `required:"true"  arg:"kafka-brokers" env:"KAFKA_BROKERS" usage:"Comma-separated Kafka broker list"`
-	Stage        string           `required:"true"  arg:"stage"         env:"STAGE"         usage:"Deployment stage (dev|prod)"`
-	PollInterval string           `required:"false" arg:"poll-interval" env:"POLL_INTERVAL" usage:"Poll interval (Go duration)"                     default:"5m"`
-	RepoScope    string           `required:"false" arg:"repo-scope"    env:"REPO_SCOPE"    usage:"GitHub user/org scope"                           default:"bborbe"`
-	BotAllowlist string           `required:"false" arg:"bot-allowlist" env:"BOT_ALLOWLIST" usage:"Comma-separated bot author allowlist"            default:"dependabot[bot],renovate[bot]"`
+	Listen         string           `required:"false" arg:"listen"          env:"LISTEN"          usage:"HTTP listen address (healthz/readiness/metrics)"                                     default:":9090"`
+	GHToken        string           `required:"true"  arg:"gh-token"        env:"GH_TOKEN"        usage:"GitHub token (read scope sufficient)"                                                                                        display:"length"`
+	KafkaBrokers   libkafka.Brokers `required:"true"  arg:"kafka-brokers"   env:"KAFKA_BROKERS"   usage:"Comma-separated Kafka broker list"`
+	Stage          string           `required:"true"  arg:"stage"           env:"STAGE"           usage:"Deployment stage (dev|prod)"`
+	PollInterval   string           `required:"false" arg:"poll-interval"   env:"POLL_INTERVAL"   usage:"Poll interval (Go duration)"                                                         default:"5m"`
+	RepoScope      string           `required:"false" arg:"repo-scope"      env:"REPO_SCOPE"      usage:"GitHub user/org scope"                                                               default:"bborbe"`
+	BotAllowlist   string           `required:"false" arg:"bot-allowlist"   env:"BOT_ALLOWLIST"   usage:"Comma-separated bot author allowlist"                                                default:"dependabot[bot],renovate[bot]"`
+	TrustedAuthors string           `required:"false" arg:"trusted-authors" env:"TRUSTED_AUTHORS" usage:"Comma-separated trusted GitHub author logins (required; empty list refuses startup)"`
 }
 
 func (a *application) Run(ctx context.Context, _ libsentry.Client) error {
@@ -68,6 +69,15 @@ func (a *application) Run(ctx context.Context, _ libsentry.Client) error {
 	botAllowlist := pkg.ParseBotAllowlist(a.BotAllowlist)
 	startTime := libtime.NewCurrentDateTime().Now()
 
+	trustedAuthors := pkg.ParseTrustedAuthors(a.TrustedAuthors)
+	if len(trustedAuthors) == 0 {
+		return errors.Errorf(
+			ctx,
+			"no trusted authors configured: set TRUSTED_AUTHORS to a comma-separated list of GitHub logins",
+		)
+	}
+	glog.V(2).Infof("trusted-authors count=%d", len(trustedAuthors))
+
 	w, cleanup, err := factory.CreateWatcher(
 		ctx,
 		a.GHToken,
@@ -76,6 +86,7 @@ func (a *application) Run(ctx context.Context, _ libsentry.Client) error {
 		a.RepoScope,
 		botAllowlist,
 		startTime,
+		trustedAuthors,
 	)
 	if err != nil {
 		return errors.Wrap(ctx, err, "create watcher")
