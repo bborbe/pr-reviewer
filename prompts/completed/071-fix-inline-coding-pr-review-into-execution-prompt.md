@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["011"]
+spec: [011-swap-execution-to-coding-pr-review]
 summary: Inlined /coding:pr-review plugin content into the execution-phase prompt by reading the plugin file at runtime in checkoutExecutionStep.Run, stripping YAML frontmatter, prepending a pre-filled-arguments header, and appending a verdict-translation footer — so plugin orchestration runs as native instructions instead of being described as a prose slash command.
 container: code-reviewer-071-fix-inline-coding-pr-review-into-execution-prompt
 dark-factory-version: dev
