@@ -38,6 +38,25 @@ func validateRepoScope(ctx context.Context, scope string) error {
 	return nil
 }
 
+// parseBackfillDuration parses raw as a libtime.Duration. Empty string returns 0 (disabled).
+// Negative values are rejected.
+func parseBackfillDuration(ctx context.Context, raw string) (libtime.Duration, error) {
+	if raw == "" {
+		return 0, nil
+	}
+	parsed, err := libtime.ParseDuration(ctx, raw)
+	if err != nil {
+		return 0, errors.Wrapf(ctx, err, "parse BACKFILL_DURATION")
+	}
+	if parsed != nil && *parsed < 0 {
+		return 0, errors.Errorf(ctx, "BACKFILL_DURATION must not be negative, got %s", *parsed)
+	}
+	if parsed == nil {
+		return 0, nil
+	}
+	return *parsed, nil
+}
+
 func main() {
 	app := &application{}
 	os.Exit(service.Main(context.Background(), app, &app.SentryDSN, &app.SentryProxy))
@@ -47,15 +66,16 @@ type application struct {
 	SentryDSN   string `required:"false" arg:"sentry-dsn"   env:"SENTRY_DSN"   usage:"SentryDSN"    display:"length"`
 	SentryProxy string `required:"false" arg:"sentry-proxy" env:"SENTRY_PROXY" usage:"Sentry Proxy"`
 
-	Listen         string           `required:"false" arg:"listen"          env:"LISTEN"          usage:"HTTP listen address (healthz/readiness/metrics)"                                     default:":9090"`
-	GHToken        string           `required:"true"  arg:"gh-token"        env:"GH_TOKEN"        usage:"GitHub token (read scope sufficient)"                                                                                        display:"length"`
-	KafkaBrokers   libkafka.Brokers `required:"true"  arg:"kafka-brokers"   env:"KAFKA_BROKERS"   usage:"Comma-separated Kafka broker list"`
-	Stage          string           `required:"true"  arg:"stage"           env:"STAGE"           usage:"Deployment stage (dev|prod)"`
-	PollInterval   string           `required:"false" arg:"poll-interval"   env:"POLL_INTERVAL"   usage:"Poll interval (Go duration)"                                                         default:"5m"`
-	RepoScope      string           `required:"false" arg:"repo-scope"      env:"REPO_SCOPE"      usage:"GitHub user/org scope"                                                               default:"bborbe"`
-	BotAllowlist   string           `required:"false" arg:"bot-allowlist"   env:"BOT_ALLOWLIST"   usage:"Comma-separated bot author allowlist"                                                default:"dependabot[bot],renovate[bot]"`
-	TrustedAuthors string           `required:"false" arg:"trusted-authors" env:"TRUSTED_AUTHORS" usage:"Comma-separated trusted GitHub author logins (required; empty list refuses startup)"`
-	MaxPRAge       string           `required:"false" arg:"max-pr-age"      env:"MAX_PR_AGE"      usage:"Skip PRs older than this (Go duration; empty disables)"                              default:"2160h"`
+	Listen           string           `required:"false" arg:"listen"            env:"LISTEN"            usage:"HTTP listen address (healthz/readiness/metrics)"                                           default:":9090"`
+	GHToken          string           `required:"true"  arg:"gh-token"          env:"GH_TOKEN"          usage:"GitHub token (read scope sufficient)"                                                                                              display:"length"`
+	KafkaBrokers     libkafka.Brokers `required:"true"  arg:"kafka-brokers"     env:"KAFKA_BROKERS"     usage:"Comma-separated Kafka broker list"`
+	Stage            string           `required:"true"  arg:"stage"             env:"STAGE"             usage:"Deployment stage (dev|prod)"`
+	PollInterval     string           `required:"false" arg:"poll-interval"     env:"POLL_INTERVAL"     usage:"Poll interval (Go duration)"                                                               default:"5m"`
+	RepoScope        string           `required:"false" arg:"repo-scope"        env:"REPO_SCOPE"        usage:"GitHub user/org scope"                                                                     default:"bborbe"`
+	BotAllowlist     string           `required:"false" arg:"bot-allowlist"     env:"BOT_ALLOWLIST"     usage:"Comma-separated bot author allowlist"                                                      default:"dependabot[bot],renovate[bot]"`
+	TrustedAuthors   string           `required:"false" arg:"trusted-authors"   env:"TRUSTED_AUTHORS"   usage:"Comma-separated trusted GitHub author logins (required; empty list refuses startup)"`
+	MaxPRAge         string           `required:"false" arg:"max-pr-age"        env:"MAX_PR_AGE"        usage:"Skip PRs older than this (Go duration; empty disables)"                                    default:"2160h"`
+	BackfillDuration string           `required:"false" arg:"backfill-duration" env:"BACKFILL_DURATION" usage:"On cold start, backdate the initial cursor by this duration (Go duration; empty disables)" default:"720h"`
 }
 
 func (a *application) Run(ctx context.Context, _ libsentry.Client) error {
@@ -83,6 +103,16 @@ func (a *application) Run(ctx context.Context, _ libsentry.Client) error {
 	}
 	if maxAge < 0 {
 		return errors.Errorf(ctx, "MAX_PR_AGE must not be negative, got %s", maxAge)
+	}
+
+	backfillDuration, err := parseBackfillDuration(ctx, a.BackfillDuration)
+	if err != nil {
+		return err
+	}
+	if backfillDuration > 0 {
+		startTime = startTime.Add(-backfillDuration)
+		glog.V(2).
+			Infof("cursor cold-start backfilled by %s; initial=%s", backfillDuration, startTime)
 	}
 
 	taskCreationFilter := filter.TaskCreationFilters{

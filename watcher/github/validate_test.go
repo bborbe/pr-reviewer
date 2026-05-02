@@ -6,9 +6,32 @@ package main
 
 import (
 	"context"
+	"time"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+)
+
+var _ = DescribeTable("parseBackfillDuration",
+	func(raw string, expected libtime.Duration, expectError bool, errContains string) {
+		ctx := context.Background()
+		got, err := parseBackfillDuration(ctx, raw)
+		if expectError {
+			Expect(err).To(HaveOccurred())
+			if errContains != "" {
+				Expect(err.Error()).To(ContainSubstring(errContains))
+			}
+		} else {
+			Expect(err).NotTo(HaveOccurred())
+			Expect(got).To(Equal(expected))
+		}
+	},
+	Entry("empty string disables backfill", "", libtime.Duration(0), false, ""),
+	Entry("720h parses correctly", "720h", libtime.Duration(720*time.Hour), false, ""),
+	Entry("30d equals 720h", "30d", libtime.Duration(720*time.Hour), false, ""),
+	Entry("negative duration is rejected", "-1h", libtime.Duration(0), true, "negative"),
+	Entry("garbage input returns parse error", "not-a-duration", libtime.Duration(0), true, ""),
 )
 
 var _ = DescribeTable("validateRepoScope",
