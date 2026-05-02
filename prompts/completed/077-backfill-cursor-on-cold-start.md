@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Added BACKFILL_DURATION env var (default 720h/30 days) that backdates the initial cursor on cold start by extracting parseBackfillDuration helper in main.go, backdating startTime before factory construction, and adding table-driven tests for all specified cases.
 container: code-reviewer-077-backfill-cursor-on-cold-start
 dark-factory-version: dev
 created: "2026-05-02T13:40:00Z"
 queued: "2026-05-02T11:34:54Z"
 started: "2026-05-02T11:46:27Z"
+completed: "2026-05-02T11:49:57Z"
 ---
 
 <summary>
