@@ -11,6 +11,11 @@ spec:
   secretName: agent-pr-reviewer
   volumeClaim: agent-pr-reviewer
   volumeMountPath: /home/claude/.claude
+  env:
+    # Tell Claude Code where the config + plugins live (matches volumeMountPath).
+    # Without this, the agent runs without /coding plugin loaded → /coding:pr-review
+    # slash command not registered → execution phase falls back to inline prompt.
+    CLAUDE_CONFIG_DIR: /home/claude/.claude
   trigger:
     statuses:
       - in_progress
